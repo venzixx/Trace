@@ -43,46 +43,51 @@ export default function DocsArchitecture() {
         </div>
 
         {/* Documentation Section Navigation */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-900 border border-slate-800">
+        <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-900 border border-slate-800 overflow-x-auto max-w-full scrollbar-none">
           <button
             onClick={() => setActiveDocTab('pipeline')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'pipeline' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            System Pipeline
+            <Layers className="w-3.5 h-3.5" />
+            <span>Overview</span>
           </button>
           <button
             onClick={() => setActiveDocTab('l4l7')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'l4l7' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            L4/L7 Wire Inspection
+            <Zap className="w-3.5 h-3.5" />
+            <span>Wire Telemetry</span>
           </button>
           <button
             onClick={() => setActiveDocTab('ml')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'ml' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Machine Learning Engine
+            <Cpu className="w-3.5 h-3.5" />
+            <span>ML Engine</span>
           </button>
           <button
             onClick={() => setActiveDocTab('mystery')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'mystery' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Chameleon Store Hunter
+            <Eye className="w-3.5 h-3.5" />
+            <span>Store Hunter</span>
           </button>
           <button
             onClick={() => setActiveDocTab('regulatory')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'regulatory' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Regulatory SAR Format
+            <FileText className="w-3.5 h-3.5" />
+            <span>SAR Reports</span>
           </button>
         </div>
       </div>
