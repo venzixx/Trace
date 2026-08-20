@@ -285,7 +285,7 @@ async def generate_sar_report(merchant_id: str = "mid_herbals_4412", db: Session
     dummy_tx = attack_simulator.generate_cloaked_casino_transaction()
     verdict = risk_engine.evaluate_transaction(dummy_tx)
     
-    report = sar_generator.generate_sar(
+    report = await sar_generator.generate_sar(
         merchant_id=merchant_id,
         merchant_name=m_name,
         evidence=evidence,

@@ -1,16 +1,21 @@
 import uuid
+import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 from core.schemas import SARReport, CloakingEvidence, RiskVerdict
+from agents.gemini_service import gemini_service
+
+logger = logging.getLogger(__name__)
 
 class SARGeneratorAgent:
     """
     Autonomous Compliance & Regulatory Dossier Agent.
     Compiles formal Suspicious Activity Reports (SAR) for FIU-IND, RBI, and Card Schemes.
+    Supports Google Gemini LLM synthesis with automatic offline template fallback.
     """
 
-    @staticmethod
-    def generate_sar(
+    async def generate_sar(
+        self,
         merchant_id: str,
         merchant_name: str,
         evidence: CloakingEvidence,
@@ -21,7 +26,30 @@ class SARGeneratorAgent:
         report_id = f"SAR-IND-2026-{uuid.uuid4().hex[:8].upper()}"
         timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        markdown_body = f"""# SUSPICIOUS ACTIVITY REPORT (SAR)
+        # 1. Try Google Gemini LLM synthesis if API key is provided
+        gemini_markdown = None
+        if gemini_service.is_enabled:
+            logger.info("Generating SAR report using external Google Gemini LLM...")
+            try:
+                gemini_markdown = await gemini_service.generate_sar_narrative(
+                    report_id=report_id,
+                    merchant_name=merchant_name,
+                    merchant_id=merchant_id,
+                    claimed_business=evidence.facade_claimed_business,
+                    unmasked_business=evidence.actual_detected_business,
+                    violation=evidence.mcc_violation_code,
+                    risk_score=verdict.overall_risk_score,
+                    wire_telemetry=wire_telemetry,
+                    estimated_volume_inr=estimated_volume_inr
+                )
+            except Exception as e:
+                logger.warning(f"Gemini generation encountered error, falling back to deterministic template: {e}")
+
+        # 2. Built-in Deterministic Template Fallback
+        if gemini_markdown and len(gemini_markdown) > 100:
+            markdown_body = gemini_markdown
+        else:
+            markdown_body = f"""# SUSPICIOUS ACTIVITY REPORT (SAR)
 **Report Reference:** `{report_id}`  
 **Filing Date:** `{timestamp_str}`  
 **Jurisdiction / Regulatory Standard:** RBI Master Directions (AML/CFT) & FIU-IND STR Format  
