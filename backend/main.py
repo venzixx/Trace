@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Dict, Any, List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,9 @@ from agents.chameleon_hunter import chameleon_hunter
 from agents.sar_generator import sar_generator
 from simulator.attack_scenarios import attack_simulator
 from simulator.stream_manager import stream_manager
+
+logger = logging.getLogger("trace.main")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -30,7 +34,7 @@ app.add_middleware(
 
 risk_engine = RiskEngine()
 
-# Sample monitored merchants catalog
+# Monitored merchants catalog
 MONITORED_MERCHANTS = [
     {
         "merchant_id": "mid_herbals_4412",
@@ -141,25 +145,31 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
     await stream_manager.connect(websocket)
     try:
         while True:
-            # Keep-alive ping/pong listener
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
         stream_manager.disconnect(websocket)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"WebSocket telemetry client disconnected: {e}")
         stream_manager.disconnect(websocket)
 
-# Serve Frontend static build if it exists
-frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+# Serve Frontend static build if present
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 if os.path.exists(frontend_dist):
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+        
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
+        target_path = os.path.join(frontend_dist, full_path)
+        if full_path and os.path.exists(target_path) and os.path.isfile(target_path):
+            return FileResponse(target_path)
         index_file = os.path.join(frontend_dist, "index.html")
         if os.path.exists(index_file):
             return FileResponse(index_file)
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="SPA entry index.html not found")
 
 if __name__ == "__main__":
     import uvicorn
