@@ -342,16 +342,16 @@ async def generate_sar_report(merchant_id: str = "mid_herbals_4412", db: Session
 # ----------------- SIMULATOR & WEBSOCKET ----------------- #
 
 @app.post("/api/v1/simulate/start")
-def start_simulation(scenario: str = Query("MIXED")):
+async def start_simulation(scenario: str = Query("MIXED")):
     valid_scenarios = {"CLEAN", "CLOAKED", "BOT_SWARM", "BUST_OUT", "MIXED"}
     if scenario.upper() not in valid_scenarios:
         raise HTTPException(status_code=400, detail=f"Invalid scenario '{scenario}'. Must be one of: {', '.join(valid_scenarios)}")
-    stream_manager.start_stream(scenario.upper())
+    await stream_manager.start_stream(scenario.upper())
     return {"status": "started", "scenario": scenario.upper()}
 
 @app.post("/api/v1/simulate/stop")
-def stop_simulation():
-    stream_manager.stop_stream()
+async def stop_simulation():
+    await stream_manager.stop_stream()
     return {"status": "stopped"}
 
 @app.websocket("/ws/telemetry")

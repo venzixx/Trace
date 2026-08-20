@@ -80,21 +80,22 @@ class StreamManager:
                 await self.broadcast(event)
 
                 # Interval between simulated transactions
-                delay = 0.35 if self.current_scenario == "BOT_SWARM" else random.uniform(1.2, 2.5)
+                delay = 0.4 if self.current_scenario == "BOT_SWARM" else random.uniform(1.2, 2.5)
                 await asyncio.sleep(delay)
         except asyncio.CancelledError:
             logger.info("Simulation loop cancelled gracefully.")
         except Exception as e:
             logger.error(f"Unexpected error in simulation loop: {e}", exc_info=True)
 
-    def start_stream(self, scenario: str = "MIXED"):
+    async def start_stream(self, scenario: str = "MIXED"):
         self.current_scenario = scenario
         if not self.is_streaming:
             self.is_streaming = True
-            self.stream_task = asyncio.create_task(self._simulation_loop())
+            loop = asyncio.get_running_loop()
+            self.stream_task = loop.create_task(self._simulation_loop())
             logger.info(f"Stream initiated on scenario: {scenario}")
 
-    def stop_stream(self):
+    async def stop_stream(self):
         self.is_streaming = False
         if self.stream_task and not self.stream_task.done():
             self.stream_task.cancel()
