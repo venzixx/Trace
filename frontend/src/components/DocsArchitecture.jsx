@@ -39,9 +39,6 @@ export default function DocsArchitecture() {
             <h2 className="text-xl font-bold text-white tracking-tight">
               TRACE SYSTEM ARCHITECTURE &amp; WORKFLOW
             </h2>
-            <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-              High-throughput, dual-speed autonomous risk pipeline combining Layer 4/7 wire telemetry with multi-agent adversarial forensic crawlers.
-            </p>
           </div>
         </div>
 
