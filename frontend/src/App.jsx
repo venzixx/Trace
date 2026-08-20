@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginPage from './components/LoginPage';
 import Navbar from './components/Navbar';
 import RiskMetrics from './components/RiskMetrics';
 import WirePacketInspector from './components/WirePacketInspector';
 import TransactionFeed from './components/TransactionFeed';
 import ChameleonUnmasker from './components/ChameleonUnmasker';
-import AttackControlConsole from './components/AttackControlConsole';
+import AttackSimulatorPage from './components/AttackSimulatorPage';
+import AIModelRegistry from './components/AIModelRegistry';
 import SARReportStudio from './components/SARReportStudio';
+import AddMerchantModal from './components/AddMerchantModal';
+import ManualTransactionModal from './components/ManualTransactionModal';
 import { api } from './services/api';
 import { Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 
-export default function App() {
+function TraceDashboard() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('live');
   const [isStreaming, setIsStreaming] = useState(false);
   const [scenario, setScenario] = useState('MIXED');
@@ -18,76 +24,159 @@ export default function App() {
   const [merchants, setMerchants] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [apiError, setApiError] = useState(null);
+  
+  // Modals
+  const [isAddMerchantOpen, setIsAddMerchantOpen] = useState(false);
+  const [isManualTxOpen, setIsManualTxOpen] = useState(false);
+
   const [stats, setStats] = useState({
-    totalEvaluated: 142,
-    blockedLaunderingInr: 4850000,
+    totalEvaluated: 0,
+    blockedLaunderingInr: 0,
     avgLatencyMs: 0.09,
-    activeQuarantines: 2,
-    frictionBreakdown: { allow: 82, stepUp: 10, hold: 4, block: 4 }
+    activeQuarantines: 0,
+    frictionBreakdown: { allow: 85, stepUp: 10, hold: 3, block: 2 }
   });
 
   const wsRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
-  const reconnectAttemptsRef = useRef(0);
-  const isStreamingRef = useRef(isStreaming);
-  isStreamingRef.current = isStreaming;
+  const heartbeatTimerRef = useRef(null);
+  const isStreamingRef = useRef(false);
 
   const loadMerchants = async () => {
     try {
       setApiError(null);
       const data = await api.getMerchants();
-      if (Array.isArray(data)) setMerchants(data);
+      if (Array.isArray(data)) {
+        setMerchants(data);
+        // Calculate initial stats from real DB
+        const quarantinedCount = data.filter(m => m.status === 'QUARANTINED').length;
+        setStats(prev => ({
+          ...prev,
+          activeQuarantines: quarantinedCount
+        }));
+      }
     } catch (err) {
       console.error("Failed to load merchants:", err);
-      setApiError("Unable to connect to Trace Backend. Please verify the server is running on port 8000.");
+      setApiError("Unable to connect to Trace Backend database.");
     }
   };
 
-  const connectWebSocket = useCallback(() => {
-    if (wsRef.current) {
-      try { wsRef.current.close(); } catch(e){}
+  const loadPastTransactions = async () => {
+    try {
+      const past = await api.getRecordedTransactions();
+      if (Array.isArray(past) && past.length > 0) {
+        const formatted = past.map(tx => ({
+          type: "TRANSACTION_EVENT",
+          transaction: {
+            transaction_id: tx.transaction_id,
+            merchant_id: tx.merchant_id,
+            merchant_name: tx.merchant_name,
+            claimed_mcc: tx.claimed_mcc,
+            registered_category: "Retail",
+            amount_inr: tx.amount_inr,
+            currency: "INR",
+            payment_method: tx.payment_method,
+            customer_id: "cust_db_record",
+            cart_item_count: 1,
+            cart_items: [{ name: "Checkout Line Item", price: tx.amount_inr }],
+            device_user_agent: "Mozilla/5.0 Ingress",
+            timestamp: tx.timestamp,
+            wire_telemetry: {
+              client_ip: tx.client_ip || "103.24.12.88",
+              server_ip: "52.66.191.144",
+              tcp_rtt_ms: tx.tcp_rtt_ms || 32.0,
+              ttl_hops: 54,
+              ja4_fingerprint: tx.ja4_fingerprint || "t13d1516h2_8daaf6152771_b7f2f1e29e92",
+              tls_cipher_suite: "TLS_AES_128_GCM_SHA256",
+              tls_version: "TLSv1.3",
+              asn_org: tx.asn_org || "Reliance Jio Infocomm",
+              asn_type: "Residential",
+              cisco_splt_entropy: tx.cisco_splt_entropy || 2.8,
+              packet_burst_rate: 4.2,
+              http2_header_order_hash: "h2_std_chrome",
+              is_proxy_or_vpn: false
+            }
+          },
+          verdict: {
+            transaction_id: tx.transaction_id,
+            merchant_id: tx.merchant_id,
+            overall_risk_score: tx.overall_risk_score,
+            wire_risk_score: tx.wire_risk_score,
+            behavioral_risk_score: tx.behavioral_risk_score,
+            action: tx.action,
+            threat_category: tx.threat_category,
+            explainability_reasons: [
+              { factor_name: "Persistent DB Record", score_impact: 0, description: tx.summary_text, severity: "LOW" }
+            ],
+            summary_text: tx.summary_text,
+            processing_latency_ms: 0.12
+          }
+        }));
+        setTransactions(formatted);
+        setSelectedItem(formatted[0]);
+        setStats(prev => ({
+          ...prev,
+          totalEvaluated: formatted.length
+        }));
+      }
+    } catch (e) {
+      console.warn("Could not load past transactions:", e);
     }
+  };
 
+  const closeWebSocket = () => {
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+    if (wsRef.current) {
+      try {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+      } catch (e) {}
+      wsRef.current = null;
+    }
+    setConnectionStatus('disconnected');
+  };
+
+  const connectWebSocket = useCallback(() => {
+    closeWebSocket();
     setConnectionStatus('connecting');
     const wsUrl = api.getWebSocketUrl();
-    
+
     try {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         setConnectionStatus('connected');
-        reconnectAttemptsRef.current = 0;
         setApiError(null);
+        // Start 15s heartbeat
+        heartbeatTimerRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 15000);
       };
 
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
           if (payload.type === "TRANSACTION_EVENT") {
-            setTransactions(prev => {
-              const next = [payload, ...prev.slice(0, 49)];
-              return next;
-            });
-
-            // Auto-select latest if none selected
+            setTransactions(prev => [payload, ...prev.slice(0, 49)]);
             setSelectedItem(prev => prev || payload);
 
-            // Update stats dynamically
             setStats(prev => {
               const isLaunder = payload.verdict.threat_category === 'CHAMELEON_CLOAKING';
               const action = payload.verdict.action;
-              
-              const currentCounts = {
-                allow: Math.round((prev.frictionBreakdown.allow / 100) * prev.totalEvaluated) + (action === 'ALLOW' ? 1 : 0),
-                stepUp: Math.round((prev.frictionBreakdown.stepUp / 100) * prev.totalEvaluated) + (action === 'STEP_UP_3DS' ? 1 : 0),
-                hold: Math.round((prev.frictionBreakdown.hold / 100) * prev.totalEvaluated) + (action === 'SETTLEMENT_HOLD' ? 1 : 0),
-                block: Math.round((prev.frictionBreakdown.block / 100) * prev.totalEvaluated) + (action === 'BLOCK_QUARANTINE' ? 1 : 0),
-              };
-              
               const newTotal = prev.totalEvaluated + 1;
-              const allowPct = Math.round((currentCounts.allow / newTotal) * 100);
-              const stepUpPct = Math.round((currentCounts.stepUp / newTotal) * 100);
-              const holdPct = Math.round((currentCounts.hold / newTotal) * 100);
+
+              const allowCount = Math.round((prev.frictionBreakdown.allow / 100) * prev.totalEvaluated) + (action === 'ALLOW' ? 1 : 0);
+              const stepUpCount = Math.round((prev.frictionBreakdown.stepUp / 100) * prev.totalEvaluated) + (action === 'STEP_UP_3DS' ? 1 : 0);
+              const holdCount = Math.round((prev.frictionBreakdown.hold / 100) * prev.totalEvaluated) + (action === 'SETTLEMENT_HOLD' ? 1 : 0);
+
+              const allowPct = Math.round((allowCount / newTotal) * 100);
+              const stepUpPct = Math.round((stepUpCount / newTotal) * 100);
+              const holdPct = Math.round((holdCount / newTotal) * 100);
               const blockPct = Math.max(0, 100 - (allowPct + stepUpPct + holdPct));
 
               return {
@@ -98,17 +187,12 @@ export default function App() {
                   : prev.blockedLaunderingInr,
                 activeQuarantines: prev.activeQuarantines + (action === 'BLOCK_QUARANTINE' ? 1 : 0),
                 avgLatencyMs: payload.verdict.processing_latency_ms || 0.09,
-                frictionBreakdown: {
-                  allow: allowPct,
-                  stepUp: stepUpPct,
-                  hold: holdPct,
-                  block: blockPct
-                }
+                frictionBreakdown: { allow: allowPct, stepUp: stepUpPct, hold: holdPct, block: blockPct }
               };
             });
           }
         } catch (err) {
-          console.error("Failed to parse WS message:", err);
+          console.error("Failed to parse WS event:", err);
         }
       };
 
@@ -118,16 +202,6 @@ export default function App() {
 
       ws.onclose = () => {
         setConnectionStatus('disconnected');
-        // Auto-reconnect with exponential backoff if still supposed to be streaming
-        if (isStreamingRef.current) {
-          const delay = Math.min(1000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
-          reconnectAttemptsRef.current += 1;
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (isStreamingRef.current) {
-              connectWebSocket();
-            }
-          }, delay);
-        }
       };
 
       wsRef.current = ws;
@@ -152,16 +226,7 @@ export default function App() {
   const handleStopStream = async () => {
     setIsStreaming(false);
     isStreamingRef.current = false;
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    if (wsRef.current) {
-      try {
-        wsRef.current.close();
-      } catch (e) {}
-      wsRef.current = null;
-    }
-    setConnectionStatus('disconnected');
+    closeWebSocket();
     try {
       await api.stopSimulation();
     } catch (err) {
@@ -182,16 +247,18 @@ export default function App() {
     setActiveTab('live');
   };
 
-  // Initial load
+  const handleManualEvaluated = (evaluatedItem) => {
+    setTransactions(prev => [evaluatedItem, ...prev]);
+    setSelectedItem(evaluatedItem);
+    setActiveTab('live');
+  };
+
   useEffect(() => {
     loadMerchants();
-    handleStartStream('MIXED');
+    loadPastTransactions();
 
     return () => {
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (wsRef.current) {
-        try { wsRef.current.close(); } catch(e){}
-      }
+      closeWebSocket();
     };
   }, []);
 
@@ -205,6 +272,8 @@ export default function App() {
         toggleStream={toggleStream}
         latencyMs={stats.avgLatencyMs}
         connectionStatus={connectionStatus}
+        onOpenAddMerchant={() => setIsAddMerchantOpen(true)}
+        onOpenManualTx={() => setIsManualTxOpen(true)}
       />
 
       {/* API Error Notification */}
@@ -228,12 +297,10 @@ export default function App() {
         {/* Global Key Metrics Bar */}
         <RiskMetrics stats={stats} />
 
-        {/* Tab 1: Live Wire Stream & Cockpit */}
+        {/* Tab 1: Live Wire Cockpit */}
         {activeTab === 'live' && (
           <div className="space-y-6">
-            {/* Top Grid: Transaction Feed + Wireshark Packet Dissector */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-              {/* Left 5 Cols: Ingress Feed */}
               <div className="xl:col-span-5">
                 <TransactionFeed
                   transactions={transactions}
@@ -242,7 +309,6 @@ export default function App() {
                 />
               </div>
 
-              {/* Right 7 Cols: Wireshark Wire-Telemetry Dissector */}
               <div className="xl:col-span-7">
                 <WirePacketInspector
                   transaction={selectedItem?.transaction}
@@ -251,7 +317,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Bottom Row: Explainable AI Decision Breakdown */}
+            {/* Explainable AI Decision Breakdown */}
             {selectedItem && selectedItem.verdict && (
               <div className="rounded-xl custom-glass border border-cyber-border p-6">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
@@ -300,16 +366,22 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: Interactive Attack Simulator */}
+        {/* Tab 3: Dedicated Attack Simulator Arena */}
         {activeTab === 'simulator' && (
-          <AttackControlConsole
+          <AttackSimulatorPage
             onLaunchScenario={handleLaunchScenario}
             activeScenario={scenario}
             isStreaming={isStreaming}
+            onToggleStream={toggleStream}
           />
         )}
 
-        {/* Tab 4: Regulatory SAR Studio */}
+        {/* Tab 4: AI Model Registry & Agent Brain */}
+        {activeTab === 'ai' && (
+          <AIModelRegistry />
+        )}
+
+        {/* Tab 5: Regulatory SAR Studio */}
         {activeTab === 'sar' && (
           <SARReportStudio
             merchants={merchants}
@@ -317,10 +389,50 @@ export default function App() {
         )}
       </main>
 
+      {/* Modals */}
+      <AddMerchantModal
+        isOpen={isAddMerchantOpen}
+        onClose={() => setIsAddMerchantOpen(false)}
+        onMerchantAdded={loadMerchants}
+      />
+
+      <ManualTransactionModal
+        isOpen={isManualTxOpen}
+        onClose={() => setIsManualTxOpen(false)}
+        merchants={merchants}
+        onEvaluated={handleManualEvaluated}
+      />
+
       {/* Footer */}
       <footer className="border-t border-cyber-border py-4 px-6 text-center text-xs font-mono text-slate-500 bg-cyber-dark">
-        Trace Autonomous Risk Engine • Layer 4/7 Wire Telemetry &amp; Chameleon Mystery Shopper • Razorpay AI Builder 2026
+        Trace Autonomous Risk Engine • Layer 4/7 Wire Telemetry &amp; Isolation Forest AI • Razorpay AI Builder 2026
       </footer>
     </div>
   );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-cyber-dark flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  return <TraceDashboard />;
 }
