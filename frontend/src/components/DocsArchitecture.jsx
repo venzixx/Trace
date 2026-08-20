@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
 
 export default function DocsArchitecture() {
-  const [activeDocTab, setActiveDocTab] = useState('pipeline'); // pipeline, l4l7, ml, mystery, regulatory
+  const [activeDocTab, setActiveDocTab] = useState('pipeline'); // pipeline, l4l7, ml, gemini, mystery, regulatory
 
   return (
     <div className="space-y-8">
@@ -50,6 +50,15 @@ export default function DocsArchitecture() {
             <span>ML Engine</span>
           </button>
           <button
+            onClick={() => setActiveDocTab('gemini')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              activeDocTab === 'gemini' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Icon icon="solar:sparkles-bold-duotone" className="w-3.5 h-3.5 text-amber-300" />
+            <span>Gemini LLM</span>
+          </button>
+          <button
             onClick={() => setActiveDocTab('mystery')}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'mystery' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
@@ -87,7 +96,7 @@ export default function DocsArchitecture() {
                   ⚡ 0.09ms Fast-Path
                 </span>
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  🔍 Async Agentic Deep-Audit
+                  🔍 Async Gemini Deep-Audit
                 </span>
               </div>
             </div>
@@ -132,10 +141,10 @@ export default function DocsArchitecture() {
                 </div>
                 <h4 className="font-bold text-xs text-purple-300">Multi-Tier AI Matrix</h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Isolation Forest ML outlier scoring + NLP Semantic MCC/Cart consistency check + Adversarial Storefront Unmasker.
+                  Isolation Forest ML outlier scoring + NLP Semantic MCC check + Async Google Gemini 1.5 Flash Deep Forensic Audit.
                 </p>
                 <div className="pt-2 border-t border-slate-800 text-[10px] font-mono text-purple-300">
-                  Model: IsolationForest (n=100)
+                  Model: IsolationForest + Gemini
                 </div>
               </div>
 
@@ -286,7 +295,73 @@ export default function DocsArchitecture() {
         </div>
       )}
 
-      {/* SECTION 4: CHAMELEON STORE HUNTER */}
+      {/* SECTION 4: GOOGLE GEMINI EXTERNAL LLM INTEGRATION */}
+      {activeDocTab === 'gemini' && (
+        <div className="space-y-6">
+          <div className="p-6 md:p-8 rounded-3xl custom-glass border border-amber-500/30 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+              <div>
+                <span className="text-xs font-mono text-amber-400 font-bold flex items-center gap-1.5">
+                  <Icon icon="solar:sparkles-bold-duotone" className="w-4 h-4 text-amber-300" /> HYBRID DUAL-SPEED ARCHITECTURE
+                </span>
+                <h3 className="text-base font-bold text-white mt-0.5">
+                  Google Gemini 1.5 / 2.0 Flash External LLM Integration
+                </h3>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                Model: gemini-1.5-flash
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+                <div className="flex items-center gap-2 text-sky-400 font-bold text-xs">
+                  <Icon icon="solar:document-text-bold-duotone" className="w-4 h-4" />
+                  <span>1. Courtroom-Ready SARs</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Gemini analyzes packet captures, unmasked DOM nodes, and ledger discrepancies to draft formal SAR/STR dossiers with legal citations under PMLA 2002 and RBI Master Directions.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+                <div className="flex items-center gap-2 text-purple-400 font-bold text-xs">
+                  <Icon icon="solar:shield-warning-bold-duotone" className="w-4 h-4" />
+                  <span>2. Zero-Shot Cart Deobfuscation</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Understands semantic intent behind cloaked catalog items (e.g. recognizing "5000 Dragon VIP Coins" in a cosmetic store as illegal gambling token laundering).
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                  <Icon icon="solar:bolt-bold-duotone" className="w-4 h-4" />
+                  <span>3. Zero-Overhead Gateway</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Trace executes Gemini <strong>asynchronously in the background</strong> so in-line payment checkouts remain lightning fast (&lt;1ms) with zero cloud LLM latency penalty.
+                </p>
+              </div>
+            </div>
+
+            {/* Architecture Code Config Box */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs">
+              <div className="text-slate-400 text-[11px] flex justify-between">
+                <span>Secure Environment Configuration (`.env`):</span>
+                <span className="text-emerald-400">✓ Gitignored (100% Protected)</span>
+              </div>
+              <pre className="text-indigo-300 bg-slate-900/80 p-3 rounded-xl overflow-x-auto text-[11px]">
+{`# Google Gemini Integration (Async Forensic Layer)
+GEMINI_API_KEY=AQ.Ab8RN6LF... [SECURED IN .ENV]
+GEMINI_MODEL=gemini-1.5-flash`}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 5: CHAMELEON STORE HUNTER */}
       {activeDocTab === 'mystery' && (
         <div className="space-y-6">
           <div className="p-6 md:p-8 rounded-3xl custom-glass border border-slate-800 space-y-6">
@@ -323,7 +398,7 @@ export default function DocsArchitecture() {
         </div>
       )}
 
-      {/* SECTION 5: REGULATORY SAR SPECIFICATION */}
+      {/* SECTION 6: REGULATORY SAR SPECIFICATION */}
       {activeDocTab === 'regulatory' && (
         <div className="space-y-6">
           <div className="p-6 md:p-8 rounded-3xl custom-glass border border-slate-800 space-y-6">

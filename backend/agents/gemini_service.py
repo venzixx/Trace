@@ -5,6 +5,23 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
+def _load_env_fallback():
+    for env_path in [".env", "backend/.env", "../.env"]:
+        if os.path.exists(env_path):
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k_clean = k.strip()
+                            if k_clean and k_clean not in os.environ:
+                                os.environ[k_clean] = v.strip().strip("'\"")
+            except Exception:
+                pass
+
+_load_env_fallback()
+
 class GeminiService:
     """
     Optional External LLM Engine powered by Google Gemini.
@@ -13,12 +30,14 @@ class GeminiService:
     """
 
     def __init__(self):
+        _load_env_fallback()
         self.api_key = os.getenv("GEMINI_API_KEY", "")
         self.model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
         self.endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
 
     @property
     def is_enabled(self) -> bool:
+        self.api_key = os.getenv("GEMINI_API_KEY", self.api_key)
         return bool(self.api_key and len(self.api_key) > 5)
 
     async def generate_content(self, prompt: str, system_instruction: Optional[str] = None) -> Optional[str]:
