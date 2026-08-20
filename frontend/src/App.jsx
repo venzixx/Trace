@@ -75,13 +75,35 @@ export default function App() {
             // Update stats dynamically
             setStats(prev => {
               const isLaunder = payload.verdict.threat_category === 'CHAMELEON_CLOAKING';
+              const action = payload.verdict.action;
+              
+              const currentCounts = {
+                allow: Math.round((prev.frictionBreakdown.allow / 100) * prev.totalEvaluated) + (action === 'ALLOW' ? 1 : 0),
+                stepUp: Math.round((prev.frictionBreakdown.stepUp / 100) * prev.totalEvaluated) + (action === 'STEP_UP_3DS' ? 1 : 0),
+                hold: Math.round((prev.frictionBreakdown.hold / 100) * prev.totalEvaluated) + (action === 'SETTLEMENT_HOLD' ? 1 : 0),
+                block: Math.round((prev.frictionBreakdown.block / 100) * prev.totalEvaluated) + (action === 'BLOCK_QUARANTINE' ? 1 : 0),
+              };
+              
+              const newTotal = prev.totalEvaluated + 1;
+              const allowPct = Math.round((currentCounts.allow / newTotal) * 100);
+              const stepUpPct = Math.round((currentCounts.stepUp / newTotal) * 100);
+              const holdPct = Math.round((currentCounts.hold / newTotal) * 100);
+              const blockPct = Math.max(0, 100 - (allowPct + stepUpPct + holdPct));
+
               return {
                 ...prev,
-                totalEvaluated: prev.totalEvaluated + 1,
+                totalEvaluated: newTotal,
                 blockedLaunderingInr: isLaunder 
                   ? prev.blockedLaunderingInr + (payload.transaction.amount_inr || 0)
                   : prev.blockedLaunderingInr,
-                avgLatencyMs: payload.verdict.processing_latency_ms || 0.09
+                activeQuarantines: prev.activeQuarantines + (action === 'BLOCK_QUARANTINE' ? 1 : 0),
+                avgLatencyMs: payload.verdict.processing_latency_ms || 0.09,
+                frictionBreakdown: {
+                  allow: allowPct,
+                  stepUp: stepUpPct,
+                  hold: holdPct,
+                  block: blockPct
+                }
               };
             });
           }

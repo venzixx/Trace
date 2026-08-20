@@ -117,8 +117,11 @@ def get_monitored_merchants():
 
 @app.post("/api/v1/simulate/start")
 def start_simulation(scenario: str = Query("MIXED", description="Scenario: CLEAN, CLOAKED, BOT_SWARM, BUST_OUT, MIXED")):
-    stream_manager.start_stream(scenario)
-    return {"status": "started", "scenario": scenario}
+    valid_scenarios = {"CLEAN", "CLOAKED", "BOT_SWARM", "BUST_OUT", "MIXED"}
+    if scenario.upper() not in valid_scenarios:
+        raise HTTPException(status_code=400, detail=f"Invalid scenario '{scenario}'. Must be one of: {', '.join(valid_scenarios)}")
+    stream_manager.start_stream(scenario.upper())
+    return {"status": "started", "scenario": scenario.upper()}
 
 @app.post("/api/v1/simulate/stop")
 def stop_simulation():
@@ -127,7 +130,9 @@ def stop_simulation():
 
 @app.post("/api/v1/sar/generate", response_model=SARReport)
 async def generate_sar_report(merchant_id: str = "mid_herbals_4412"):
-    merchant = next((m for m in MONITORED_MERCHANTS if m["merchant_id"] == merchant_id), MONITORED_MERCHANTS[0])
+    merchant = next((m for m in MONITORED_MERCHANTS if m["merchant_id"] == merchant_id), None)
+    if not merchant:
+        raise HTTPException(status_code=404, detail=f"Merchant '{merchant_id}' not found in registry")
     evidence = await chameleon_hunter.investigate_merchant(merchant["merchant_id"], merchant["website_url"])
     dummy_tx = attack_simulator.generate_cloaked_casino_transaction()
     verdict = risk_engine.evaluate_transaction(dummy_tx)
