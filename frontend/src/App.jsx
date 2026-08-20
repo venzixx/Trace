@@ -362,7 +362,7 @@ function TraceDashboard() {
     { id: 'simulator', title: 'Fraud Attack Test', icon: Cpu },
     { id: 'ai', title: 'How AI Works', icon: Brain },
     { id: 'sar', title: 'Official Reports', icon: FileText },
-    { id: 'docs', title: 'System Docs & Script', icon: BookOpen },
+    { id: 'docs', title: 'System Docs', icon: BookOpen },
   ];
 
   return (
