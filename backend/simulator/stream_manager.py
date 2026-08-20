@@ -3,9 +3,11 @@ import json
 import random
 import logging
 from typing import List, Set
+from datetime import datetime, timezone
 from fastapi import WebSocket
 from simulator.attack_scenarios import attack_simulator
 from models.risk_engine import RiskEngine
+from core.database import SessionLocal, MerchantModel, TransactionModel
 
 logger = logging.getLogger("trace.stream_manager")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -57,7 +59,7 @@ class StreamManager:
                     tx = attack_simulator.generate_bot_swarm_transaction()
                 elif self.current_scenario == "BUST_OUT":
                     tx = attack_simulator.generate_bust_out_transaction()
-                else: # MIXED (60% Clean, 15% Cloaked, 15% Bot, 10% Bust Out)
+                else: # MIXED
                     dice = random.random()
                     if dice < 0.60:
                         tx = attack_simulator.generate_clean_transaction()
@@ -70,6 +72,51 @@ class StreamManager:
 
                 # Evaluate transaction in real-time
                 verdict = self.risk_engine.evaluate_transaction(tx)
+
+                # Persist dynamically generated attack data to SQLite DB
+                try:
+                    db = SessionLocal()
+                    existing_m = db.query(MerchantModel).filter(MerchantModel.merchant_id == tx.merchant_id).first()
+                    if not existing_m:
+                        new_m = MerchantModel(
+                            merchant_id=tx.merchant_id,
+                            merchant_name=tx.merchant_name,
+                            claimed_mcc=tx.claimed_mcc,
+                            registered_category=tx.registered_category,
+                            website_url=f"https://{tx.merchant_id.replace('_', '-')}.in",
+                            status="QUARANTINED" if verdict.threat_category.value == "CHAMELEON_CLOAKING" else ("SETTLEMENT_HOLD" if verdict.threat_category.value == "MERCHANT_BUST_OUT" else "ACTIVE_VERIFIED"),
+                            risk_score=verdict.overall_risk_score,
+                            threat=verdict.threat_category.value,
+                            monthly_volume_inr=round(tx.amount_inr * 25.0, 2),
+                            last_audited=datetime.now(timezone.utc)
+                        )
+                        db.add(new_m)
+                    
+                    tx_rec = TransactionModel(
+                        transaction_id=tx.transaction_id,
+                        merchant_id=tx.merchant_id,
+                        merchant_name=tx.merchant_name,
+                        amount_inr=tx.amount_inr,
+                        payment_method=tx.payment_method,
+                        claimed_mcc=tx.claimed_mcc,
+                        overall_risk_score=verdict.overall_risk_score,
+                        wire_risk_score=verdict.wire_risk_score,
+                        behavioral_risk_score=verdict.behavioral_risk_score,
+                        action=verdict.action.value,
+                        threat_category=verdict.threat_category.value,
+                        client_ip=tx.wire_telemetry.client_ip,
+                        tcp_rtt_ms=tx.wire_telemetry.tcp_rtt_ms,
+                        ja4_fingerprint=tx.wire_telemetry.ja4_fingerprint,
+                        cisco_splt_entropy=tx.wire_telemetry.cisco_splt_entropy,
+                        asn_org=tx.wire_telemetry.asn_org,
+                        summary_text=verdict.summary_text,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    db.add(tx_rec)
+                    db.commit()
+                    db.close()
+                except Exception as e:
+                    logger.warning(f"Could not persist attack event to DB: {e}")
 
                 # Broadcast combined packet + verdict event
                 event = {

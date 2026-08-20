@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  ShieldCheck,
   ShieldAlert,
   Zap,
   Activity,
@@ -12,15 +11,10 @@ import {
   FileText,
   Cpu,
   Brain,
-  Wifi,
-  WifiOff,
-  User,
   LogOut,
   Plus,
   Send,
   Search,
-  Settings,
-  Bell,
   PanelLeft,
   Menu,
   X,
@@ -29,20 +23,11 @@ import {
   CheckCircle2,
   Sparkles,
   ArrowRight,
-  TrendingUp,
-  Clock,
-  Layers,
-  Store,
   CreditCard,
-  Check,
-  Copy,
-  Printer,
-  ChevronDown,
   AlertOctagon,
   RefreshCw,
-  Sliders,
-  Award,
-  Globe
+  PlusCircle,
+  Clock
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './components/LoginPage';
@@ -57,14 +42,13 @@ function TraceDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Real-time State
-  const [isStreaming, setIsStreaming] = useState(true);
+  // Real-time State (Starts 100% clean with ZERO seeded mock data)
+  const [isStreaming, setIsStreaming] = useState(false);
   const [scenario, setScenario] = useState('MIXED');
   const [transactions, setTransactions] = useState([]);
   const [selectedTx, setSelectedTx] = useState(null);
   const [merchants, setMerchants] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  const [notifications, setNotifications] = useState(3);
   const [apiError, setApiError] = useState(null);
 
   // Modals
@@ -77,23 +61,17 @@ function TraceDashboard() {
   const [auditEvidence, setAuditEvidence] = useState(null);
 
   // SAR state
-  const [selectedSarMid, setSelectedSarMid] = useState('mid_herbals_4412');
+  const [selectedSarMid, setSelectedSarMid] = useState('');
   const [sarReport, setSarReport] = useState(null);
   const [isGeneratingSar, setIsGeneratingSar] = useState(false);
-  const [sarCopied, setSarCopied] = useState(false);
 
-  // AI Playground state
-  const [testRTT, setTestRTT] = useState(220);
-  const [testEntropy, setTestEntropy] = useState(0.65);
-  const [testBurst, setTestBurst] = useState(35.0);
-  const [testRatio, setTestRatio] = useState(8.5);
-
+  // Stats (starts at 0)
   const [stats, setStats] = useState({
-    totalEvaluated: 142,
-    blockedLaunderingInr: 4850000,
-    avgLatencyMs: 0.09,
-    activeQuarantines: 2,
-    frictionBreakdown: { allow: 85, stepUp: 10, hold: 3, block: 2 }
+    totalEvaluated: 0,
+    blockedLaunderingInr: 0,
+    avgLatencyMs: 0.0,
+    activeQuarantines: 0,
+    frictionBreakdown: { allow: 100, stepUp: 0, hold: 0, block: 0 }
   });
 
   const wsRef = useRef(null);
@@ -106,8 +84,9 @@ function TraceDashboard() {
       const data = await api.getMerchants();
       if (Array.isArray(data)) {
         setMerchants(data);
-        if (!selectedAuditMerchant && data.length > 0) {
-          setSelectedAuditMerchant(data[0]);
+        if (data.length > 0) {
+          setSelectedAuditMerchant(prev => prev || data[0]);
+          setSelectedSarMid(prev => prev || data[0].merchant_id);
         }
         const quarantinedCount = data.filter(m => m.status === 'QUARANTINED').length;
         setStats(prev => ({ ...prev, activeQuarantines: quarantinedCount }));
@@ -118,7 +97,7 @@ function TraceDashboard() {
     }
   };
 
-  // Load Past Transactions
+  // Load Past Transactions from SQLite DB
   const loadPastTransactions = async () => {
     try {
       const past = await api.getRecordedTransactions();
@@ -134,7 +113,7 @@ function TraceDashboard() {
             amount_inr: tx.amount_inr,
             currency: "INR",
             payment_method: tx.payment_method,
-            customer_id: "cust_db_record",
+            customer_id: "cust_recorded",
             cart_item_count: 1,
             cart_items: [{ name: "Shopping Order Item", price: tx.amount_inr }],
             device_user_agent: "Mozilla/5.0 Ingress",
@@ -172,6 +151,16 @@ function TraceDashboard() {
         }));
         setTransactions(formatted);
         setSelectedTx(formatted[0]);
+        
+        const totalLaunder = formatted
+          .filter(t => t.verdict.threat_category === 'CHAMELEON_CLOAKING')
+          .reduce((sum, t) => sum + (t.transaction.amount_inr || 0), 0);
+
+        setStats(prev => ({
+          ...prev,
+          totalEvaluated: formatted.length,
+          blockedLaunderingInr: totalLaunder
+        }));
       }
     } catch (e) {
       console.warn("Could not load past transactions:", e);
@@ -221,6 +210,7 @@ function TraceDashboard() {
           if (payload.type === "TRANSACTION_EVENT") {
             setTransactions(prev => [payload, ...prev.slice(0, 49)]);
             setSelectedTx(prev => prev || payload);
+            loadMerchants(); // Refresh merchant list dynamically as attack generates stores
 
             setStats(prev => {
               const isLaunder = payload.verdict.threat_category === 'CHAMELEON_CLOAKING';
@@ -312,7 +302,9 @@ function TraceDashboard() {
   const handleGenerateSar = async (mid) => {
     setIsGeneratingSar(true);
     try {
-      const data = await api.generateSAR(mid || selectedSarMid);
+      const targetMid = mid || selectedSarMid;
+      if (!targetMid) return;
+      const data = await api.generateSAR(targetMid);
       setSarReport(data);
     } catch (err) {
       console.error(err);
@@ -325,14 +317,12 @@ function TraceDashboard() {
     loadMerchants();
     loadPastTransactions();
     connectWebSocket();
-    handleStartStream('MIXED');
 
     return () => {
       closeWebSocket();
     };
   }, []);
 
-  // Simple Action Badge Component
   const renderSimpleActionBadge = (action) => {
     switch (action) {
       case 'ALLOW':
@@ -365,7 +355,7 @@ function TraceDashboard() {
 
   const sidebarItems = [
     { id: 'home', title: 'Home Overview', icon: Activity },
-    { id: 'live', title: 'Live Payments', icon: CreditCard, badge: isStreaming ? 'Live' : null },
+    { id: 'live', title: 'Live Payments', icon: CreditCard, badge: isStreaming ? 'Live' : (transactions.length > 0 ? `${transactions.length}` : null) },
     { id: 'mystery', title: 'Fake Store Checker', icon: Eye, badge: stats.activeQuarantines > 0 ? `${stats.activeQuarantines}` : null },
     { id: 'simulator', title: 'Fraud Attack Test', icon: Cpu },
     { id: 'ai', title: 'How AI Works', icon: Brain },
@@ -374,7 +364,7 @@ function TraceDashboard() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100 flex selection:bg-indigo-500 selection:text-white">
-      {/* Animated subtle ambient glow */}
+      {/* Ambient Glow */}
       <motion.div
         className="absolute inset-0 -z-10 opacity-30 pointer-events-none"
         animate={{
@@ -388,7 +378,7 @@ function TraceDashboard() {
         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
       />
 
-      {/* Mobile Drawer Overlay */}
+      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
@@ -551,7 +541,7 @@ function TraceDashboard() {
               {isStreaming ? (
                 <>
                   <Square className="w-3 h-3 fill-rose-300" />
-                  <span className="hidden sm:inline">Pause Live Feed</span>
+                  <span className="hidden sm:inline">Pause Feed</span>
                 </>
               ) : (
                 <>
@@ -589,7 +579,7 @@ function TraceDashboard() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto space-y-8">
-          {/* Tab 1: HOME OVERVIEW (Designali Creative Suite Style) */}
+          {/* Tab 1: HOME OVERVIEW */}
           {activeTab === 'home' && (
             <div className="space-y-8">
               {/* Big Hero Gradient Welcome Banner */}
@@ -612,21 +602,21 @@ function TraceDashboard() {
                     </p>
                     <div className="pt-2 flex flex-wrap gap-3">
                       <button
-                        onClick={() => setActiveTab('live')}
+                        onClick={() => setActiveTab('simulator')}
                         className="px-5 py-2.5 rounded-2xl bg-white text-indigo-700 font-bold text-xs hover:bg-white/90 transition-all shadow-lg flex items-center gap-2"
                       >
-                        <Activity className="w-4 h-4" /> Watch Live Payments
+                        <Cpu className="w-4 h-4" /> Launch Fake Attack Test
                       </button>
                       <button
-                        onClick={() => setActiveTab('mystery')}
+                        onClick={() => setIsManualTxOpen(true)}
                         className="px-5 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/30 text-white font-semibold text-xs transition-all backdrop-blur-md flex items-center gap-2"
                       >
-                        <Eye className="w-4 h-4" /> Check for Fake Stores
+                        <Send className="w-4 h-4" /> Test Custom Payment
                       </button>
                     </div>
                   </div>
 
-                  {/* Rotating 3D Rings Graphic */}
+                  {/* Rotating Graphic */}
                   <div className="hidden lg:flex items-center justify-center pr-4">
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -643,7 +633,7 @@ function TraceDashboard() {
                 </div>
               </motion.div>
 
-              {/* 4 Simple Metric Cards with Hover Animation */}
+              {/* 4 Simple Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* Metric 1: Speed */}
                 <motion.div whileHover={{ scale: 1.02, y: -4 }} className="p-6 rounded-3xl custom-glass space-y-3">
@@ -654,10 +644,10 @@ function TraceDashboard() {
                     </div>
                   </div>
                   <p className="text-3xl font-bold font-mono text-white">
-                    0.09 <span className="text-xs text-sky-400 font-normal">ms</span>
+                    {stats.avgLatencyMs > 0 ? stats.avgLatencyMs : '0.09'} <span className="text-xs text-sky-400 font-normal">ms</span>
                   </p>
                   <p className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
-                    ⚡ Zero customer checkout delay
+                    ⚡ Sub-millisecond decision time
                   </p>
                 </motion.div>
 
@@ -670,7 +660,7 @@ function TraceDashboard() {
                     </div>
                   </div>
                   <p className="text-3xl font-bold font-mono text-white">
-                    ₹{(stats.blockedLaunderingInr / 100000).toFixed(1)} <span className="text-xs text-rose-400 font-normal">Lakh</span>
+                    ₹{(stats.blockedLaunderingInr / 100000).toFixed(2)} <span className="text-xs text-rose-400 font-normal">Lakh</span>
                   </p>
                   <p className="text-xs text-rose-400 flex items-center gap-1 font-medium">
                     🔒 Held in safe escrow account
@@ -696,13 +686,13 @@ function TraceDashboard() {
                 {/* Metric 4: Auto-Approved Percentage */}
                 <motion.div whileHover={{ scale: 1.02, y: -4 }} className="p-6 rounded-3xl custom-glass space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-semibold">Automatic Approvals</span>
+                    <span className="text-xs text-slate-400 font-semibold">Payments Evaluated</span>
                     <div className="p-2 rounded-2xl bg-emerald-500/10 text-emerald-400">
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold font-mono text-white">
-                    {stats.frictionBreakdown.allow}% <span className="text-xs text-emerald-400 font-normal">1-Click</span>
+                    {stats.totalEvaluated} <span className="text-xs text-emerald-400 font-normal">Total</span>
                   </p>
                   <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden flex">
                     <div style={{ width: `${stats.frictionBreakdown.allow}%` }} className="bg-emerald-500 h-full"></div>
@@ -721,49 +711,69 @@ function TraceDashboard() {
                       <Activity className="w-4 h-4 text-indigo-400" />
                       <span>Live Payment Ingress Stream</span>
                     </div>
-                    <button
-                      onClick={() => setActiveTab('live')}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
-                    >
-                      View All →
-                    </button>
+                    {transactions.length > 0 && (
+                      <button
+                        onClick={() => setActiveTab('live')}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
+                      >
+                        View All →
+                      </button>
+                    )}
                   </div>
 
-                  <div className="divide-y divide-slate-800/60 space-y-1">
-                    {transactions.slice(0, 4).map((item, idx) => {
-                      const tx = item.transaction;
-                      const verdict = item.verdict;
+                  {transactions.length === 0 ? (
+                    <div className="p-10 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-500">
+                        <CreditCard className="w-6 h-6" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-300">No payment data recorded yet</p>
+                      <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                        Launch a test scenario from <strong>Fraud Attack Test</strong> or click <strong>Start Live Feed</strong> to see transactions stream in.
+                      </p>
+                      <button
+                        onClick={() => setActiveTab('simulator')}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold"
+                      >
+                        Go to Fraud Attack Test →
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-800/60 space-y-1">
+                      {transactions.slice(0, 4).map((item, idx) => {
+                        const tx = item.transaction;
+                        const verdict = item.verdict;
 
-                      return (
-                        <div key={tx.transaction_id || idx} className="py-3 flex items-center justify-between gap-4">
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-white text-xs">{tx.merchant_name}</span>
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
-                                {tx.claimed_mcc?.split('-')[1]?.trim() || 'Retail'}
-                              </span>
+                        return (
+                          <div key={tx.transaction_id || idx} className="py-3 flex items-center justify-between gap-4">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white text-xs">{tx.merchant_name}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                                  {tx.claimed_mcc?.split('-')[1]?.trim() || 'Retail'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 font-mono">
+                                ID: {tx.transaction_id} • {tx.payment_method}
+                              </p>
                             </div>
-                            <p className="text-[11px] text-slate-400 font-mono">
-                              ID: {tx.transaction_id} • {tx.payment_method}
-                            </p>
-                          </div>
 
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono font-bold text-white text-xs">
-                              ₹{tx.amount_inr?.toLocaleString('en-IN')}
-                            </span>
-                            {renderSimpleActionBadge(verdict.action)}
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-bold text-white text-xs">
+                                ₹{tx.amount_inr?.toLocaleString('en-IN')}
+                              </span>
+                              {renderSimpleActionBadge(verdict.action)}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right 1 Col: Quick Feature Launchpad */}
                 <div className="rounded-3xl custom-glass p-6 space-y-4">
                   <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" /> Quick Testing Hub
+                    <Sparkles className="w-4 h-4 text-amber-400" /> Fraud Testing Arena
                   </h3>
                   <div className="space-y-2.5">
                     <button
@@ -774,7 +784,7 @@ function TraceDashboard() {
                       className="w-full p-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-left transition-all space-y-1"
                     >
                       <div className="flex justify-between items-center text-xs font-bold text-rose-400">
-                        <span>Simulate Cloaked Casino</span>
+                        <span>1. Simulate Cloaked Casino</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </div>
                       <p className="text-[11px] text-slate-400 font-sans">
@@ -790,7 +800,7 @@ function TraceDashboard() {
                       className="w-full p-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-left transition-all space-y-1"
                     >
                       <div className="flex justify-between items-center text-xs font-bold text-amber-400">
-                        <span>Simulate Fast Bot Swarm</span>
+                        <span>2. Simulate Fast Bot Swarm</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </div>
                       <p className="text-[11px] text-slate-400 font-sans">
@@ -799,15 +809,18 @@ function TraceDashboard() {
                     </button>
 
                     <button
-                      onClick={() => setActiveTab('mystery')}
-                      className="w-full p-3 rounded-2xl bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 text-left transition-all space-y-1"
+                      onClick={() => {
+                        handleStartStream('BUST_OUT');
+                        setActiveTab('live');
+                      }}
+                      className="w-full p-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-left transition-all space-y-1"
                     >
-                      <div className="flex justify-between items-center text-xs font-bold text-indigo-300">
-                        <span>Deploy AI Mystery Shopper</span>
+                      <div className="flex justify-between items-center text-xs font-bold text-purple-400">
+                        <span>3. Sleeper Store Sudden Drain</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </div>
                       <p className="text-[11px] text-slate-400 font-sans">
-                        Unmasks hidden websites pretending to sell cosmetics.
+                        Tests ₹3.5 Lakh ticket surge &amp; escrow holding.
                       </p>
                     </button>
                   </div>
@@ -827,39 +840,52 @@ function TraceDashboard() {
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
                       Live Customer Checkouts
                     </span>
-                    <span className="text-xs font-mono text-slate-400">{transactions.length} captured</span>
+                    <span className="text-xs font-mono text-slate-400">{transactions.length} total</span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 space-y-1 pr-1">
-                    {transactions.map((item, idx) => {
-                      const tx = item.transaction;
-                      const verdict = item.verdict;
-                      const isSelected = selectedTx?.transaction?.transaction_id === tx.transaction_id;
+                  {transactions.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                      <CreditCard className="w-10 h-10 text-slate-600" />
+                      <p className="text-xs text-slate-400">No payment stream active.</p>
+                      <button
+                        onClick={() => handleStartStream('MIXED')}
+                        className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
+                      >
+                        Start Live Stream
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 space-y-1 pr-1">
+                      {transactions.map((item, idx) => {
+                        const tx = item.transaction;
+                        const verdict = item.verdict;
+                        const isSelected = selectedTx?.transaction?.transaction_id === tx.transaction_id;
 
-                      return (
-                        <div
-                          key={tx.transaction_id || idx}
-                          onClick={() => setSelectedTx(item)}
-                          className={`p-3.5 rounded-2xl cursor-pointer transition-all space-y-1.5 ${
-                            isSelected
-                              ? 'bg-indigo-600/20 border border-indigo-500/40'
-                              : 'hover:bg-slate-800/40 border border-transparent'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-white text-xs">{tx.merchant_name}</span>
-                            <span className="font-mono text-xs font-bold text-white">
-                              ₹{tx.amount_inr?.toLocaleString('en-IN')}
-                            </span>
+                        return (
+                          <div
+                            key={tx.transaction_id || idx}
+                            onClick={() => setSelectedTx(item)}
+                            className={`p-3.5 rounded-2xl cursor-pointer transition-all space-y-1.5 ${
+                              isSelected
+                                ? 'bg-indigo-600/20 border border-indigo-500/40'
+                                : 'hover:bg-slate-800/40 border border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-white text-xs">{tx.merchant_name}</span>
+                              <span className="font-mono text-xs font-bold text-white">
+                                ₹{tx.amount_inr?.toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-slate-400">
+                              <span>{tx.claimed_mcc?.split('-')[1]?.trim() || 'Retail'}</span>
+                              {renderSimpleActionBadge(verdict.action)}
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between text-[11px] text-slate-400">
-                            <span>{tx.claimed_mcc?.split('-')[1]?.trim() || 'Retail'}</span>
-                            {renderSimpleActionBadge(verdict.action)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right 7 Cols: Selected Payment Inspector */}
@@ -925,7 +951,11 @@ function TraceDashboard() {
                       )}
                     </>
                   ) : (
-                    <div className="p-12 text-center text-slate-500">Select a payment from the list to view forensic details.</div>
+                    <div className="p-16 text-center text-slate-500 space-y-2">
+                      <Zap className="w-8 h-8 mx-auto text-slate-600" />
+                      <p className="text-xs">No payment selected.</p>
+                      <p className="text-[11px] text-slate-600">Launch a test scenario to inspect live network packets.</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -946,33 +976,54 @@ function TraceDashboard() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                  <select
-                    value={selectedAuditMerchant?.merchant_id || ''}
-                    onChange={(e) => {
-                      const m = merchants.find(item => item.merchant_id === e.target.value);
-                      setSelectedAuditMerchant(m);
-                      setAuditEvidence(null);
-                    }}
-                    className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none"
-                  >
-                    {merchants.map(m => (
-                      <option key={m.merchant_id} value={m.merchant_id}>
-                        {m.merchant_name} ({m.threat})
-                      </option>
-                    ))}
-                  </select>
+                  {merchants.length > 0 ? (
+                    <>
+                      <select
+                        value={selectedAuditMerchant?.merchant_id || ''}
+                        onChange={(e) => {
+                          const m = merchants.find(item => item.merchant_id === e.target.value);
+                          setSelectedAuditMerchant(m);
+                          setAuditEvidence(null);
+                        }}
+                        className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none"
+                      >
+                        {merchants.map(m => (
+                          <option key={m.merchant_id} value={m.merchant_id}>
+                            {m.merchant_name} ({m.threat})
+                          </option>
+                        ))}
+                      </select>
 
-                  <button
-                    onClick={handleRunAudit}
-                    disabled={isAuditing || !selectedAuditMerchant}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 text-slate-950 font-bold text-xs shadow-lg transition-all disabled:opacity-50 shrink-0"
-                  >
-                    {isAuditing ? 'AI Investigating...' : 'Audit Store Now'}
-                  </button>
+                      <button
+                        onClick={handleRunAudit}
+                        disabled={isAuditing || !selectedAuditMerchant}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 text-slate-950 font-bold text-xs shadow-lg transition-all disabled:opacity-50 shrink-0"
+                      >
+                        {isAuditing ? 'AI Investigating...' : 'Audit Store Now'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setIsAddMerchantOpen(true)}
+                      className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" /> Add Online Store
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {auditEvidence && (
+              {merchants.length === 0 ? (
+                <div className="p-16 rounded-3xl custom-glass text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-amber-400">
+                    <Eye className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-bold text-white">No Monitored Stores in Database</h3>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    Click <strong>"+ Add Online Store"</strong> above to register any website URL, or launch the <strong>Cloaked Casino</strong> attack in the Attack Arena to generate a rogue merchant dynamically!
+                  </p>
+                </div>
+              ) : auditEvidence ? (
                 <div className="space-y-6">
                   {/* Alert Box */}
                   <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-4">
@@ -1023,7 +1074,7 @@ function TraceDashboard() {
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -1168,24 +1219,37 @@ function TraceDashboard() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleGenerateSar(selectedSarMid)}
-                    disabled={isGeneratingSar}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs shadow-lg transition-all"
-                  >
-                    {isGeneratingSar ? 'Generating...' : 'Create Report'}
-                  </button>
-                  <button
-                    onClick={() => window.print()}
-                    className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold"
-                  >
-                    Print PDF
-                  </button>
-                </div>
+                {merchants.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={selectedSarMid}
+                      onChange={(e) => setSelectedSarMid(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none"
+                    >
+                      {merchants.map(m => (
+                        <option key={m.merchant_id} value={m.merchant_id}>
+                          {m.merchant_name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => handleGenerateSar(selectedSarMid)}
+                      disabled={isGeneratingSar}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs shadow-lg transition-all"
+                    >
+                      {isGeneratingSar ? 'Generating...' : 'Create Report'}
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold"
+                    >
+                      Print PDF
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {sarReport && (
+              {sarReport ? (
                 <div className="p-8 rounded-3xl custom-glass space-y-4 font-mono text-xs leading-relaxed text-slate-200">
                   <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                     <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
@@ -1196,6 +1260,14 @@ function TraceDashboard() {
                   <pre className="whitespace-pre-wrap font-mono text-xs text-slate-300">
                     {sarReport.report_markdown}
                   </pre>
+                </div>
+              ) : (
+                <div className="p-16 rounded-3xl custom-glass text-center space-y-3">
+                  <FileText className="w-10 h-10 text-slate-600 mx-auto" />
+                  <p className="text-xs text-slate-400">No report generated yet.</p>
+                  <p className="text-[11px] text-slate-500">
+                    Run an audit or launch a test attack to generate an official filing.
+                  </p>
                 </div>
               )}
             </div>

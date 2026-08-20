@@ -149,36 +149,6 @@ def get_ai_models_metadata():
 @app.get("/api/v1/merchants")
 def get_merchants(db: Session = Depends(get_db)):
     merchants = db.query(MerchantModel).all()
-    if not merchants:
-        # Seed initial sample if empty
-        defaults = [
-            MerchantModel(
-                merchant_id="mid_herbals_4412",
-                merchant_name="Pure Herbals Organics Pvt Ltd",
-                claimed_mcc="5977 - Cosmetic Stores & Skincare",
-                registered_category="Organic Skincare & Herbal Soaps",
-                website_url="https://pureherbals-ayurveda.in",
-                status="QUARANTINED",
-                risk_score=98.5,
-                threat="CHAMELEON_CLOAKING",
-                monthly_volume_inr=4850000.0
-            ),
-            MerchantModel(
-                merchant_id="mid_crafts_9921",
-                merchant_name="Jaipur Handloom & Heritage Crafts",
-                claimed_mcc="5949 - Sewing & Needlework Stores",
-                registered_category="Textiles & Handicrafts",
-                website_url="https://jaipurhandloomheritage.com",
-                status="ACTIVE_VERIFIED",
-                risk_score=4.2,
-                threat="CLEAN",
-                monthly_volume_inr=820000.0
-            )
-        ]
-        db.add_all(defaults)
-        db.commit()
-        merchants = db.query(MerchantModel).all()
-
     return [
         {
             "merchant_id": m.merchant_id,
