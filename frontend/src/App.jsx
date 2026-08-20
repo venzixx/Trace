@@ -355,7 +355,7 @@ function TraceDashboard() {
 
   const sidebarItems = [
     { id: 'home', title: 'Home Overview', icon: Activity },
-    { id: 'live', title: 'Live Payments', icon: CreditCard, badge: isStreaming ? 'Live' : (transactions.length > 0 ? `${transactions.length}` : null) },
+    { id: 'live', title: 'Payment Feed', icon: CreditCard, badge: transactions.length > 0 ? `${transactions.length}` : null },
     { id: 'mystery', title: 'Fake Store Checker', icon: Eye, badge: stats.activeQuarantines > 0 ? `${stats.activeQuarantines}` : null },
     { id: 'simulator', title: 'Fraud Attack Test', icon: Cpu },
     { id: 'ai', title: 'How AI Works', icon: Brain },
@@ -546,18 +546,10 @@ function TraceDashboard() {
               ) : (
                 <>
                   <Play className="w-3 h-3 fill-slate-950" />
-                  <span className="hidden sm:inline">Start Live Feed</span>
+                  <span className="hidden sm:inline">Start Feed</span>
                 </>
               )}
             </button>
-
-            {/* WS Live Indicator */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
-              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
-              <span className="text-[11px] text-slate-400 hidden sm:inline">
-                {connectionStatus === 'connected' ? 'LIVE' : 'OFFLINE'}
-              </span>
-            </div>
           </div>
         </header>
 
