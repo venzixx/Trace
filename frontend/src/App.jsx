@@ -35,6 +35,7 @@ import LoginPage from './components/LoginPage';
 import AddMerchantModal from './components/AddMerchantModal';
 import ManualTransactionModal from './components/ManualTransactionModal';
 import DocsArchitecture from './components/DocsArchitecture';
+import SARReportViewer from './components/SARReportViewer';
 import { api } from './services/api';
 
 function TraceDashboard() {
@@ -315,6 +316,19 @@ function TraceDashboard() {
     }
   };
 
+  const formatMarkdownForPrint = (md) => {
+    if (!md) return '';
+    return md
+      .replace(/^# (.*$)/gim, '<h2 style="font-size: 13pt; font-weight: bold; color: #0f172a; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-top: 14px; text-transform: uppercase;">$1</h2>')
+      .replace(/^## (.*$)/gim, '<h3 style="font-size: 10.5pt; font-weight: bold; color: #1e293b; margin-top: 12px; margin-bottom: 4px; text-transform: uppercase;">$1</h3>')
+      .replace(/^\* \*\*(.*?)\*\*(.*$)/gim, '<div style="margin: 3px 0; font-size: 9.5pt;"><strong style="color: #0f172a;">• $1</strong>$2</div>')
+      .replace(/^\* (.*$)/gim, '<div style="margin: 3px 0; font-size: 9.5pt;">• $1</div>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a;">$1</strong>')
+      .replace(/`([^`]+)`/g, '<code style="background: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 9pt; border: 1px solid #cbd5e1;">$1</code>')
+      .replace(/^---$/gim, '<hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 10px 0;" />')
+      .replace(/\n/g, '<br/>');
+  };
+
   const handlePrintSar = () => {
     if (!sarReport) return;
     const printWindow = window.open('', '_blank', 'width=950,height=1000');
@@ -322,9 +336,7 @@ function TraceDashboard() {
       window.print();
       return;
     }
-    const cleanContent = (sarReport.report_markdown || '')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    const cleanContent = formatMarkdownForPrint(sarReport.report_markdown || '');
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -334,7 +346,7 @@ function TraceDashboard() {
           <style>
             @page {
               size: A4 portrait;
-              margin: 15mm 15mm 15mm 15mm;
+              margin: 12mm 12mm 12mm 12mm;
             }
             * {
               box-sizing: border-box;
@@ -343,28 +355,28 @@ function TraceDashboard() {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
               color: #0f172a;
               background: #ffffff;
-              padding: 24px;
+              padding: 20px;
               margin: 0;
-              font-size: 10.5pt;
-              line-height: 1.5;
+              font-size: 10pt;
+              line-height: 1.45;
             }
             .header-banner {
               border-bottom: 2px solid #0f172a;
-              padding-bottom: 12px;
-              margin-bottom: 16px;
+              padding-bottom: 10px;
+              margin-bottom: 12px;
               display: flex;
               justify-content: space-between;
               align-items: flex-start;
             }
             .title {
-              font-size: 15pt;
+              font-size: 14pt;
               font-weight: 800;
               color: #0f172a;
-              margin: 0 0 4px 0;
+              margin: 0 0 3px 0;
               letter-spacing: -0.2px;
             }
             .subtitle {
-              font-size: 8.5pt;
+              font-size: 8pt;
               color: #475569;
               font-weight: 600;
               margin: 0;
@@ -375,9 +387,9 @@ function TraceDashboard() {
               background: #ecfdf5;
               color: #047857;
               border: 1px solid #a7f3d0;
-              padding: 4px 10px;
+              padding: 3px 8px;
               border-radius: 9999px;
-              font-size: 8.5pt;
+              font-size: 8pt;
               font-weight: 700;
               font-family: monospace;
               white-space: nowrap;
@@ -386,9 +398,9 @@ function TraceDashboard() {
               background: #f1f5f9;
               border: 1px solid #e2e8f0;
               border-radius: 6px;
-              padding: 8px 12px;
-              margin-bottom: 16px;
-              font-size: 8.5pt;
+              padding: 6px 10px;
+              margin-bottom: 12px;
+              font-size: 8pt;
               font-family: monospace;
               color: #334155;
               display: flex;
@@ -398,24 +410,15 @@ function TraceDashboard() {
               background: #fafafa;
               border: 1px solid #cbd5e1;
               border-radius: 6px;
-              padding: 16px;
-            }
-            pre {
-              font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-              font-size: 8.5pt;
-              color: #0f172a;
-              white-space: pre-wrap;
-              word-break: break-word;
-              margin: 0;
-              line-height: 1.45;
+              padding: 14px;
             }
             .footer-seal {
-              margin-top: 24px;
-              padding-top: 12px;
+              margin-top: 16px;
+              padding-top: 10px;
               border-top: 1px solid #cbd5e1;
               display: flex;
               justify-content: space-between;
-              font-size: 8pt;
+              font-size: 7.5pt;
               color: #64748b;
               font-family: monospace;
             }
@@ -442,7 +445,7 @@ function TraceDashboard() {
           </div>
 
           <div class="report-box">
-            <pre>${cleanContent}</pre>
+            ${cleanContent}
           </div>
 
           <div class="footer-seal">
@@ -1391,17 +1394,7 @@ function TraceDashboard() {
               </div>
 
               {sarReport ? (
-                <div className="printable-sar-report p-8 rounded-3xl custom-glass space-y-4 font-mono text-xs leading-relaxed text-slate-200">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
-                      {sarReport.report_id}
-                    </span>
-                    <span className="text-slate-400">99.4% AI Verified</span>
-                  </div>
-                  <pre className="whitespace-pre-wrap font-mono text-xs text-slate-300">
-                    {sarReport.report_markdown}
-                  </pre>
-                </div>
+                <SARReportViewer markdownText={sarReport.report_markdown} reportId={sarReport.report_id} />
               ) : (
                 <div className="p-16 rounded-3xl custom-glass text-center space-y-3">
                   <FileText className="w-10 h-10 text-slate-600 mx-auto" />
