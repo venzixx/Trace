@@ -132,6 +132,28 @@ export default function Navbar({
             <span className="hidden sm:inline">Test Wire</span>
           </button>
 
+          {/* Stream Toggle Pill */}
+          <button
+            onClick={toggleStream}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wide transition-all shadow-md ${
+              isStreaming
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
+            }`}
+          >
+            {isStreaming ? (
+              <>
+                <Square className="w-3 h-3 fill-rose-300" />
+                <span>PAUSE FEED</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3 h-3 fill-slate-950" />
+                <span>START FEED</span>
+              </>
+            )}
+          </button>
+
           {/* WS Status Pill */}
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyber-card border border-cyber-border text-xs font-mono">
             {connectionStatus === 'connected' ? (

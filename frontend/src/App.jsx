@@ -136,7 +136,6 @@ function TraceDashboard() {
       } catch (e) {}
       wsRef.current = null;
     }
-    setConnectionStatus('disconnected');
   };
 
   const connectWebSocket = useCallback(() => {
@@ -150,17 +149,20 @@ function TraceDashboard() {
       ws.onopen = () => {
         setConnectionStatus('connected');
         setApiError(null);
-        // Start 15s heartbeat
+        // Start 10s keep-alive heartbeat
+        if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "ping" }));
           }
-        }, 15000);
+        }, 10000);
       };
 
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
+          if (payload.type === "pong") return;
+
           if (payload.type === "TRANSACTION_EVENT") {
             setTransactions(prev => [payload, ...prev.slice(0, 49)]);
             setSelectedItem(prev => prev || payload);
@@ -202,11 +204,18 @@ function TraceDashboard() {
 
       ws.onclose = () => {
         setConnectionStatus('disconnected');
+        // Auto-reconnect after 2.5 seconds to keep telemetry channel persistent
+        setTimeout(() => {
+          connectWebSocket();
+        }, 2500);
       };
 
       wsRef.current = ws;
     } catch (e) {
       setConnectionStatus('disconnected');
+      setTimeout(() => {
+        connectWebSocket();
+      }, 3000);
     }
   }, []);
 
@@ -214,7 +223,6 @@ function TraceDashboard() {
     setScenario(chosenScenario);
     setIsStreaming(true);
     isStreamingRef.current = true;
-    connectWebSocket();
     try {
       await api.startSimulation(chosenScenario);
     } catch (err) {
@@ -226,7 +234,6 @@ function TraceDashboard() {
   const handleStopStream = async () => {
     setIsStreaming(false);
     isStreamingRef.current = false;
-    closeWebSocket();
     try {
       await api.stopSimulation();
     } catch (err) {
@@ -256,6 +263,8 @@ function TraceDashboard() {
   useEffect(() => {
     loadMerchants();
     loadPastTransactions();
+    connectWebSocket();
+    handleStartStream('MIXED');
 
     return () => {
       closeWebSocket();
