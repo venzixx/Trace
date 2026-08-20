@@ -27,12 +27,14 @@ import {
   AlertOctagon,
   RefreshCw,
   PlusCircle,
-  Clock
+  Clock,
+  BookOpen
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './components/LoginPage';
 import AddMerchantModal from './components/AddMerchantModal';
 import ManualTransactionModal from './components/ManualTransactionModal';
+import DocsArchitecture from './components/DocsArchitecture';
 import { api } from './services/api';
 
 function TraceDashboard() {
@@ -360,6 +362,7 @@ function TraceDashboard() {
     { id: 'simulator', title: 'Fraud Attack Test', icon: Cpu },
     { id: 'ai', title: 'How AI Works', icon: Brain },
     { id: 'sar', title: 'Official Reports', icon: FileText },
+    { id: 'docs', title: 'System Docs & Script', icon: BookOpen },
   ];
 
   return (
@@ -388,9 +391,9 @@ function TraceDashboard() {
 
       {/* Sidebar Navigation */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/95 border-r border-slate-800 backdrop-blur-xl flex flex-col justify-between transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${!sidebarOpen ? 'md:-translate-x-full' : ''}`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900/95 border-r border-slate-800 backdrop-blur-xl flex flex-col justify-between transition-all duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${mobileMenuOpen ? '!translate-x-0' : ''}`}
       >
         <div>
           {/* Brand Header */}
@@ -1263,6 +1266,11 @@ function TraceDashboard() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Tab 7: SYSTEM DOCS & 5-MIN VIDEO PITCH SCRIPT */}
+          {activeTab === 'docs' && (
+            <DocsArchitecture />
           )}
         </main>
       </div>
