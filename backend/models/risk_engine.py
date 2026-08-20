@@ -74,8 +74,9 @@ class RiskEngine:
             threat_category = ThreatCategory.CHAMELEON_CLOAKING
         elif tx.wire_telemetry.cisco_splt_entropy < 1.0 or tx.wire_telemetry.packet_burst_rate > 30.0:
             threat_category = ThreatCategory.BOT_SWARM_TESTING
-        elif tx.amount_inr > 100000.0 and "Cosmetics" in tx.claimed_mcc:
+        elif tx.amount_inr >= 150000.0 or ("sleeper" in tx.merchant_id.lower()):
             threat_category = ThreatCategory.MERCHANT_BUST_OUT
+            behavioral_score += 45.0
         elif tx.wire_telemetry.is_proxy_or_vpn and tx.wire_telemetry.tcp_rtt_ms > 150.0:
             threat_category = ThreatCategory.OFFSHORE_TUNNEL_PROXY
 
