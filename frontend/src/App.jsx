@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import RiskMetrics from './components/RiskMetrics';
 import WirePacketInspector from './components/WirePacketInspector';
@@ -7,7 +7,7 @@ import ChameleonUnmasker from './components/ChameleonUnmasker';
 import AttackControlConsole from './components/AttackControlConsole';
 import SARReportStudio from './components/SARReportStudio';
 import { api } from './services/api';
-import { Shield, Sparkles, Activity, FileText, CheckCircle2, AlertOctagon, X } from 'lucide-react';
+import { Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('live');
@@ -16,6 +16,8 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [merchants, setMerchants] = useState([]);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [apiError, setApiError] = useState(null);
   const [stats, setStats] = useState({
     totalEvaluated: 142,
     blockedLaunderingInr: 4850000,
@@ -25,89 +27,119 @@ export default function App() {
   });
 
   const wsRef = useRef(null);
-
-  // Initialize merchants and initial transactions
-  useEffect(() => {
-    loadMerchants();
-    // Start live stream by default
-    handleStartStream('MIXED');
-
-    return () => {
-      if (wsRef.current) wsRef.current.close();
-    };
-  }, []);
+  const reconnectTimeoutRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
+  const isStreamingRef = useRef(isStreaming);
+  isStreamingRef.current = isStreaming;
 
   const loadMerchants = async () => {
     try {
+      setApiError(null);
       const data = await api.getMerchants();
       if (Array.isArray(data)) setMerchants(data);
     } catch (err) {
       console.error("Failed to load merchants:", err);
+      setApiError("Unable to connect to Trace Backend. Please verify the server is running on port 8000.");
     }
   };
 
-  const connectWebSocket = () => {
+  const connectWebSocket = useCallback(() => {
     if (wsRef.current) {
       try { wsRef.current.close(); } catch(e){}
     }
 
+    setConnectionStatus('connecting');
     const wsUrl = api.getWebSocketUrl();
-    const ws = new WebSocket(wsUrl);
+    
+    try {
+      const ws = new WebSocket(wsUrl);
 
-    ws.onopen = () => {
-      console.log("Trace Telemetry WebSocket connected:", wsUrl);
-    };
+      ws.onopen = () => {
+        setConnectionStatus('connected');
+        reconnectAttemptsRef.current = 0;
+        setApiError(null);
+      };
 
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === "TRANSACTION_EVENT") {
-          setTransactions(prev => {
-            const next = [payload, ...prev.slice(0, 49)];
-            return next;
-          });
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === "TRANSACTION_EVENT") {
+            setTransactions(prev => {
+              const next = [payload, ...prev.slice(0, 49)];
+              return next;
+            });
 
-          // Auto-select latest if none selected
-          setSelectedItem(prev => prev || payload);
+            // Auto-select latest if none selected
+            setSelectedItem(prev => prev || payload);
 
-          // Update stats dynamically
-          setStats(prev => {
-            const isLaunder = payload.verdict.threat_category === 'CHAMELEON_CLOAKING';
-            return {
-              ...prev,
-              totalEvaluated: prev.totalEvaluated + 1,
-              blockedLaunderingInr: isLaunder 
-                ? prev.blockedLaunderingInr + payload.transaction.amount_inr 
-                : prev.blockedLaunderingInr,
-              avgLatencyMs: payload.verdict.processing_latency_ms || 0.09
-            };
-          });
+            // Update stats dynamically
+            setStats(prev => {
+              const isLaunder = payload.verdict.threat_category === 'CHAMELEON_CLOAKING';
+              return {
+                ...prev,
+                totalEvaluated: prev.totalEvaluated + 1,
+                blockedLaunderingInr: isLaunder 
+                  ? prev.blockedLaunderingInr + (payload.transaction.amount_inr || 0)
+                  : prev.blockedLaunderingInr,
+                avgLatencyMs: payload.verdict.processing_latency_ms || 0.09
+              };
+            });
+          }
+        } catch (err) {
+          console.error("Failed to parse WS message:", err);
         }
-      } catch (err) {
-        console.error("Failed to parse WS message:", err);
-      }
-    };
+      };
 
-    ws.onerror = (err) => {
-      console.warn("WebSocket error, retrying...", err);
-    };
+      ws.onerror = () => {
+        setConnectionStatus('disconnected');
+      };
 
-    wsRef.current = ws;
-  };
+      ws.onclose = () => {
+        setConnectionStatus('disconnected');
+        // Auto-reconnect with exponential backoff if still supposed to be streaming
+        if (isStreamingRef.current) {
+          const delay = Math.min(1000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
+          reconnectAttemptsRef.current += 1;
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (isStreamingRef.current) {
+              connectWebSocket();
+            }
+          }, delay);
+        }
+      };
+
+      wsRef.current = ws;
+    } catch (e) {
+      setConnectionStatus('disconnected');
+    }
+  }, []);
 
   const handleStartStream = async (chosenScenario = 'MIXED') => {
     setScenario(chosenScenario);
     setIsStreaming(true);
+    isStreamingRef.current = true;
     connectWebSocket();
     try {
       await api.startSimulation(chosenScenario);
     } catch (err) {
       console.error(err);
+      setApiError("Failed to trigger simulation stream.");
     }
   };
 
   const handleStopStream = async () => {
     setIsStreaming(false);
+    isStreamingRef.current = false;
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch (e) {}
+      wsRef.current = null;
+    }
+    setConnectionStatus('disconnected');
     try {
       await api.stopSimulation();
     } catch (err) {
@@ -128,6 +160,19 @@ export default function App() {
     setActiveTab('live');
   };
 
+  // Initial load
+  useEffect(() => {
+    loadMerchants();
+    handleStartStream('MIXED');
+
+    return () => {
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (wsRef.current) {
+        try { wsRef.current.close(); } catch(e){}
+      }
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-cyber-dark text-slate-100 flex flex-col selection:bg-sky-500 selection:text-black">
       {/* Top Navbar */}
@@ -136,11 +181,25 @@ export default function App() {
         setActiveTab={setActiveTab}
         isStreaming={isStreaming}
         toggleStream={toggleStream}
-        scenario={scenario}
-        setScenario={setScenario}
         latencyMs={stats.avgLatencyMs}
-        threatCount={stats.activeQuarantines}
+        connectionStatus={connectionStatus}
       />
+
+      {/* API Error Notification */}
+      {apiError && (
+        <div className="bg-rose-500/10 border-b border-rose-500/30 px-6 py-2.5 flex items-center justify-between text-xs text-rose-300 font-mono">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400" />
+            <span>{apiError}</span>
+          </div>
+          <button 
+            onClick={loadMerchants} 
+            className="flex items-center gap-1 px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
@@ -192,10 +251,10 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {selectedItem.verdict.explainability_reasons?.map((reason, idx) => (
-                    <div key={idx} className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-xs space-y-1 font-mono">
+                    <div key={`${reason.factor_name}-${idx}`} className="p-3 rounded-lg bg-slate-900/90 border border-slate-800 text-xs space-y-1 font-mono">
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-sky-300">{reason.factor_name}</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
                           reason.severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
                           (reason.severity === 'HIGH' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300')
                         }`}>
@@ -215,7 +274,7 @@ export default function App() {
         {activeTab === 'mystery' && (
           <ChameleonUnmasker
             merchants={merchants}
-            onNavigateToSAR={(mid) => setActiveTab('sar')}
+            onNavigateToSAR={() => setActiveTab('sar')}
           />
         )}
 

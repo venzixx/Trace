@@ -1,24 +1,58 @@
 import time
+import numpy as np
 from typing import List, Tuple
+from sklearn.ensemble import IsolationForest
+
 from core.schemas import TransactionPayload, RiskVerdict, ThreatCategory, RiskFactor
+from core.config import settings
 from telemetry.wire_inspector import WireInspector
 from models.friction_router import FrictionRouter
+from agents.catalog_auditor import catalog_auditor
+
+class MLAnomalyDetector:
+    """
+    Trained Unsupervised ML Model (Isolation Forest) for wire & transaction anomaly detection.
+    Evaluates multi-dimensional telemetry (RTT, SPLT entropy, burst rate, amount ratio).
+    """
+    def __init__(self):
+        # Generate baseline synthetic dataset of 1000 normal domestic transactions
+        np.random.seed(42)
+        rtt_normal = np.random.normal(35, 12, 1000)
+        entropy_normal = np.random.normal(3.1, 0.4, 1000)
+        burst_normal = np.random.exponential(2.5, 1000)
+        amount_ratio_normal = np.random.normal(1.0, 0.5, 1000)
+        
+        X_train = np.column_stack([rtt_normal, entropy_normal, burst_normal, amount_ratio_normal])
+        self.model = IsolationForest(contamination=0.03, random_state=42)
+        self.model.fit(X_train)
+
+    def score_anomaly(self, rtt: float, entropy: float, burst_rate: float, amount_ratio: float) -> float:
+        """
+        Returns an anomaly score scaled from 0.0 (normal) to 100.0 (severe outlier).
+        """
+        features = np.array([[rtt, entropy, burst_rate, amount_ratio]])
+        # Decision function: negative values indicate outliers
+        raw_score = self.model.decision_function(features)[0]
+        # Map raw score [-0.5, 0.5] to [100, 0]
+        anomaly_score = max(0.0, min(100.0, (0.5 - raw_score) * 100.0))
+        return round(anomaly_score, 1)
 
 class RiskEngine:
     """
     Sub-15ms Real-Time Hybrid Risk Engine for Razorpay Gateways.
-    Fuses Layer 4/7 Wire-Telemetry with Layer 7 Transaction Behavioral Signals.
+    Fuses Layer 4/7 Wire-Telemetry, ML Isolation Forest Anomaly Detection, and Semantic Catalog Auditing.
     """
 
     def __init__(self):
         self.inspector = WireInspector()
         self.router = FrictionRouter()
+        self.ml_detector = MLAnomalyDetector()
 
     def evaluate_transaction(self, tx: TransactionPayload) -> RiskVerdict:
         start_time = time.perf_counter()
         reasons: List[RiskFactor] = []
         
-        # 1. Wire Telemetry Assessment (<3ms)
+        # 1. Wire Telemetry Assessment (<2ms)
         wire_score, wire_findings = self.inspector.analyze_wire_signals(tx.wire_telemetry)
         
         for finding in wire_findings:
@@ -31,14 +65,29 @@ class RiskEngine:
                     severity=finding["severity"]
                 ))
 
-        # 2. Behavioral & Cart Consistency Assessment (<4ms)
+        # 2. Semantic Catalog & MCC Audit (<3ms)
+        hist_avg = 1500.0 if "Cosmetics" in tx.claimed_mcc or "Handicrafts" in tx.claimed_mcc else 5000.0
+        catalog_audit = catalog_auditor.audit_catalog_consistency(
+            registered_category=tx.registered_category,
+            claimed_mcc=tx.claimed_mcc,
+            cart_items=tx.cart_items,
+            historical_average_ticket=hist_avg
+        )
+
         behavioral_score = 0.0
-        
-        # A. Cart Item vs Claimed MCC Mismatch
-        prohibited_keywords = ["casino", "chips", "poker", "bet", "crypto", "usdt", "steroid", "replica", "rolex", "hack"]
+        if not catalog_audit["is_consistent"]:
+            for disc in catalog_audit["discrepancies"]:
+                behavioral_score += 40.0
+                reasons.append(RiskFactor(
+                    factor_name="Catalog & MCC Inconsistency",
+                    score_impact=40.0,
+                    description=disc,
+                    severity="HIGH"
+                ))
+
+        # 3. Prohibited Content Keyword Detection
         cart_texts = " ".join([item.get("name", "").lower() + " " + item.get("category", "").lower() for item in tx.cart_items])
-        
-        detected_prohibited = [kw for kw in prohibited_keywords if kw in cart_texts]
+        detected_prohibited = [kw for kw in settings.PROHIBITED_KEYWORDS if kw in cart_texts]
         if detected_prohibited:
             behavioral_score += 60.0
             reasons.append(RiskFactor(
@@ -47,43 +96,50 @@ class RiskEngine:
                 description=f"Transaction cart contains prohibited keywords: {', '.join(detected_prohibited)} while merchant claimed '{tx.claimed_mcc}'.",
                 severity="CRITICAL"
             ))
-            
-        # B. Amount Surge vs Category Baseline
-        if "Cosmetics" in tx.claimed_mcc or "Handicrafts" in tx.claimed_mcc:
-            if tx.amount_inr > 30000.0:
-                behavioral_score += 35.0
-                reasons.append(RiskFactor(
-                    factor_name="Ticket Size Surge Anomaly",
-                    score_impact=35.0,
-                    description=f"Ticket size of ₹{tx.amount_inr:,.2f} is 15x higher than category average (₹1,500).",
-                    severity="HIGH"
-                ))
-        elif tx.amount_inr > 150000.0:
-            behavioral_score += 20.0
+
+        # 4. Ticket Size Surge Anomaly
+        if ("Cosmetics" in tx.claimed_mcc or "Handicrafts" in tx.claimed_mcc) and tx.amount_inr > 30000.0:
+            behavioral_score += 35.0
             reasons.append(RiskFactor(
-                factor_name="High-Value Single Transaction",
-                score_impact=20.0,
-                description=f"Order amount is ₹{tx.amount_inr:,.2f}.",
-                severity="MEDIUM"
+                factor_name="Ticket Size Surge Anomaly",
+                score_impact=35.0,
+                description=f"Ticket size of ₹{tx.amount_inr:,.2f} is significantly above category baseline (₹{hist_avg:,.2f}).",
+                severity="HIGH"
             ))
 
-        # 3. Overall Threat Categorization
+        # 5. Machine Learning Anomaly Score (Isolation Forest)
+        amount_ratio = tx.amount_inr / hist_avg
+        ml_score = self.ml_detector.score_anomaly(
+            rtt=tx.wire_telemetry.tcp_rtt_ms,
+            entropy=tx.wire_telemetry.cisco_splt_entropy,
+            burst_rate=tx.wire_telemetry.packet_burst_rate,
+            amount_ratio=amount_ratio
+        )
+
+        if ml_score > 65.0:
+            reasons.append(RiskFactor(
+                factor_name="ML Isolation Forest Anomaly Outlier",
+                score_impact=ml_score * 0.3,
+                description=f"Unsupervised ML model classified multi-dimensional telemetry as an outlier (Score: {ml_score}/100).",
+                severity="HIGH"
+            ))
+
+        # 6. Overall Threat Categorization
         threat_category = ThreatCategory.CLEAN
         
-        if detected_prohibited or (wire_score > 60.0 and tx.wire_telemetry.tcp_rtt_ms > 180.0):
+        if detected_prohibited or (wire_score > 55.0 and tx.wire_telemetry.tcp_rtt_ms > settings.SUSPICIOUS_RTT_THRESHOLD):
             threat_category = ThreatCategory.CHAMELEON_CLOAKING
-        elif tx.wire_telemetry.cisco_splt_entropy < 1.0 or tx.wire_telemetry.packet_burst_rate > 30.0:
+        elif tx.wire_telemetry.cisco_splt_entropy < settings.MIN_PACKET_ENTROPY or tx.wire_telemetry.packet_burst_rate > settings.HIGH_BURST_RATE:
             threat_category = ThreatCategory.BOT_SWARM_TESTING
         elif tx.amount_inr >= 150000.0 or ("sleeper" in tx.merchant_id.lower()):
             threat_category = ThreatCategory.MERCHANT_BUST_OUT
             behavioral_score += 45.0
-        elif tx.wire_telemetry.is_proxy_or_vpn and tx.wire_telemetry.tcp_rtt_ms > 150.0:
+        elif tx.wire_telemetry.is_proxy_or_vpn and tx.wire_telemetry.tcp_rtt_ms > settings.MAX_DOMESTIC_RTT_MS:
             threat_category = ThreatCategory.OFFSHORE_TUNNEL_PROXY
 
-        # 4. Weighted Fusion Score (55% Wire Telemetry + 45% Behavioral)
-        overall_score = round(min(100.0, (0.55 * wire_score) + (0.45 * behavioral_score)), 1)
+        # 7. Weighted Fusion Score (50% Wire Telemetry + 35% Behavioral + 15% ML Isolation Forest)
+        overall_score = round(min(100.0, (0.50 * wire_score) + (0.35 * behavioral_score) + (0.15 * ml_score)), 1)
         
-        # If no risk factors detected, add a baseline clean confirmation
         if not reasons:
             reasons.append(RiskFactor(
                 factor_name="Clean Domestic Telemetry & Consistent Payload",
@@ -92,10 +148,9 @@ class RiskEngine:
                 severity="LOW"
             ))
 
-        # 5. Determine Dynamic Friction Policy Action
+        # 8. Dynamic Friction Policy
         action = self.router.determine_friction_action(overall_score, wire_score, threat_category)
         
-        # Summary text generation
         if action == "ALLOW":
             summary = f"Transaction approved with frictionless 1-click checkout (Risk: {overall_score}/100)."
         elif action == "STEP_UP_3DS":

@@ -48,9 +48,10 @@ export default function WirePacketInspector({ transaction, verdict }) {
 
           {layers.map((layer, idx) => {
             const isExpanded = expandedLayer === idx;
+            const layerKey = `${layer.name}-${idx}`;
             return (
               <div 
-                key={idx} 
+                key={layerKey} 
                 className={`rounded-lg border transition-all ${
                   isExpanded 
                     ? 'border-sky-500/40 bg-slate-900/90 shadow-md' 

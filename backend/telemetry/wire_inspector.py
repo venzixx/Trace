@@ -3,6 +3,7 @@ import random
 import math
 from typing import Dict, Any, List, Tuple
 from core.schemas import WireTelemetry
+from core.config import settings
 
 # Known JA4 signatures for human browsers vs automated tooling
 KNOWN_JA4_DATABASE = {
@@ -94,15 +95,15 @@ class WireInspector:
             })
 
         # 2. TCP RTT & Geographic Wire Latency Anomaly
-        if telemetry.tcp_rtt_ms > 180.0:
+        if telemetry.tcp_rtt_ms > settings.SUSPICIOUS_RTT_THRESHOLD:
             wire_score += 35.0
             findings.append({
                 "layer": "Layer 4 (TCP RTT)",
                 "signal": "Abnormal Offshore Wire Latency (Proxy Tunnel)",
-                "detail": f"Measured RTT {telemetry.tcp_rtt_ms}ms exceeds domestic threshold (85ms). Indicates offshore relay.",
+                "detail": f"Measured RTT {telemetry.tcp_rtt_ms}ms exceeds domestic threshold ({settings.MAX_DOMESTIC_RTT_MS}ms). Indicates offshore relay.",
                 "severity": "HIGH"
             })
-        elif telemetry.tcp_rtt_ms > 100.0:
+        elif telemetry.tcp_rtt_ms > settings.MAX_DOMESTIC_RTT_MS:
             wire_score += 10.0
             findings.append({
                 "layer": "Layer 4 (TCP RTT)",
@@ -119,7 +120,7 @@ class WireInspector:
             })
 
         # 3. Cisco ETA Packet Timing Entropy (SPLT)
-        if telemetry.cisco_splt_entropy < 1.0:
+        if telemetry.cisco_splt_entropy < settings.MIN_PACKET_ENTROPY:
             wire_score += 25.0
             findings.append({
                 "layer": "Layer 4 (Cisco ETA SPLT)",

@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from main import app
 from simulator.attack_scenarios import attack_simulator
 from models.risk_engine import RiskEngine
+from agents.catalog_auditor import catalog_auditor
 from core.schemas import FrictionAction, ThreatCategory
 
 class TestTraceRiskEngine(unittest.TestCase):
@@ -29,7 +30,7 @@ class TestTraceRiskEngine(unittest.TestCase):
         tx = attack_simulator.generate_cloaked_casino_transaction()
         verdict = self.engine.evaluate_transaction(tx)
         self.assertEqual(verdict.action, FrictionAction.BLOCK_QUARANTINE)
-        self.assertGreater(verdict.overall_risk_score, 70.0)
+        self.assertGreater(verdict.overall_risk_score, 65.0)
         self.assertEqual(verdict.threat_category, ThreatCategory.CHAMELEON_CLOAKING)
 
     def test_bot_swarm_testing_detection(self):
@@ -43,6 +44,16 @@ class TestTraceRiskEngine(unittest.TestCase):
         verdict = self.engine.evaluate_transaction(tx)
         self.assertEqual(verdict.action, FrictionAction.SETTLEMENT_HOLD)
         self.assertEqual(verdict.threat_category, ThreatCategory.MERCHANT_BUST_OUT)
+
+    def test_catalog_auditor_logic(self):
+        result = catalog_auditor.audit_catalog_consistency(
+            registered_category="Organic Herbal Soaps",
+            claimed_mcc="5977 - Cosmetics",
+            cart_items=[{"name": "5000 Casino Poker Chips", "price": 50000.0}],
+            historical_average_ticket=500.0
+        )
+        self.assertFalse(result["is_consistent"])
+        self.assertGreater(result["confidence_penalty"], 50.0)
 
     def test_mystery_shopper_api(self):
         response = self.client.post("/api/v1/mystery-shop?merchant_id=mid_herbals_4412&website_url=https://pureherbals-ayurveda.in")

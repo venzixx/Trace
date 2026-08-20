@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from core.schemas import SARReport, CloakingEvidence, RiskVerdict
 
@@ -19,7 +19,7 @@ class SARGeneratorAgent:
         estimated_volume_inr: float = 4850000.0
     ) -> SARReport:
         report_id = f"SAR-IND-2026-{uuid.uuid4().hex[:8].upper()}"
-        timestamp_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         markdown_body = f"""# SUSPICIOUS ACTIVITY REPORT (SAR)
 **Report Reference:** `{report_id}`  

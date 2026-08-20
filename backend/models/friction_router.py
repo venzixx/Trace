@@ -1,4 +1,5 @@
 from core.schemas import FrictionAction, ThreatCategory
+from core.config import settings
 
 class FrictionRouter:
     """
@@ -21,16 +22,16 @@ class FrictionRouter:
             return FrictionAction.SETTLEMENT_HOLD
             
         if threat_category == ThreatCategory.BOT_SWARM_TESTING:
-            if wire_score > 70.0:
+            if wire_score > settings.RISK_STEP_UP_THRESHOLD:
                 return FrictionAction.BLOCK_QUARANTINE
             return FrictionAction.STEP_UP_3DS
 
-        # Standard score-based policy
-        if overall_score < 30.0:
+        # Standard score-based policy using configured thresholds
+        if overall_score < settings.RISK_ALLOW_THRESHOLD:
             return FrictionAction.ALLOW
-        elif overall_score < 65.0:
+        elif overall_score < settings.RISK_STEP_UP_THRESHOLD:
             return FrictionAction.STEP_UP_3DS
-        elif overall_score < 85.0:
+        elif overall_score < settings.RISK_SETTLEMENT_HOLD_THRESHOLD:
             return FrictionAction.SETTLEMENT_HOLD
         else:
             return FrictionAction.BLOCK_QUARANTINE

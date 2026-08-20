@@ -1,7 +1,10 @@
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
+
+def get_current_utc_time():
+    return datetime.now(timezone.utc)
 
 class FrictionAction(str, Enum):
     ALLOW = "ALLOW"                      # Frictionless 1-Click checkout
@@ -47,7 +50,7 @@ class TransactionPayload(BaseModel):
     cart_item_count: int
     cart_items: List[Dict[str, Any]]
     device_user_agent: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=get_current_utc_time)
     wire_telemetry: WireTelemetry
 
 class RiskFactor(BaseModel):
@@ -66,7 +69,7 @@ class RiskVerdict(BaseModel):
     threat_category: ThreatCategory
     explainability_reasons: List[RiskFactor]
     summary_text: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=get_current_utc_time)
     processing_latency_ms: float
 
 class CloakingEvidence(BaseModel):
@@ -82,7 +85,7 @@ class CloakingEvidence(BaseModel):
 
 class SARReport(BaseModel):
     report_id: str
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=get_current_utc_time)
     merchant_id: str
     merchant_name: str
     regulatory_body: str = "RBI / FIU-IND / FinCEN"

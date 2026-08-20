@@ -1,21 +1,31 @@
 import React, { useState } from 'react';
-import { Eye, ShieldAlert, Sparkles, AlertOctagon, Terminal, ArrowRight, CheckCircle, FileText, Globe } from 'lucide-react';
+import { Eye, Sparkles, AlertOctagon, Terminal, CheckCircle, FileText, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function ChameleonUnmasker({ merchants, onNavigateToSAR }) {
+export default function ChameleonUnmasker({ merchants = [], onNavigateToSAR }) {
   const [selectedMerchant, setSelectedMerchant] = useState(merchants[0] || null);
   const [isAuditing, setIsAuditing] = useState(false);
   const [evidence, setEvidence] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  // Keep selectedMerchant synced with merchants prop if not yet selected
+  React.useEffect(() => {
+    if (!selectedMerchant && merchants.length > 0) {
+      setSelectedMerchant(merchants[0]);
+    }
+  }, [merchants, selectedMerchant]);
 
   const handleRunAudit = async () => {
     if (!selectedMerchant) return;
     setIsAuditing(true);
     setEvidence(null);
+    setErrorMsg(null);
     try {
       const data = await api.runMysteryShop(selectedMerchant.merchant_id, selectedMerchant.website_url);
       setEvidence(data);
     } catch (err) {
       console.error(err);
+      setErrorMsg("Failed to execute mystery shopping investigation. Please check backend connection.");
     } finally {
       setIsAuditing(false);
     }
@@ -39,12 +49,16 @@ export default function ChameleonUnmasker({ merchants, onNavigateToSAR }) {
 
         {/* Merchant Dropdown & Run Button */}
         <div className="flex items-center gap-3 w-full md:w-auto">
+          <label htmlFor="merchant-select" className="sr-only">Select Monitored Merchant</label>
           <select
+            id="merchant-select"
+            aria-label="Select Monitored Merchant"
             value={selectedMerchant?.merchant_id || ''}
             onChange={(e) => {
               const m = merchants.find(item => item.merchant_id === e.target.value);
               setSelectedMerchant(m);
               setEvidence(null);
+              setErrorMsg(null);
             }}
             className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2.5 font-mono focus:outline-none focus:border-amber-500"
           >
@@ -57,7 +71,8 @@ export default function ChameleonUnmasker({ merchants, onNavigateToSAR }) {
 
           <button
             onClick={handleRunAudit}
-            disabled={isAuditing}
+            disabled={isAuditing || !selectedMerchant}
+            aria-label="Audit Merchant Storefront"
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold text-xs tracking-wide shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 shrink-0"
           >
             <Sparkles className={`w-4 h-4 ${isAuditing ? 'animate-spin' : ''}`} />
@@ -66,13 +81,21 @@ export default function ChameleonUnmasker({ merchants, onNavigateToSAR }) {
         </div>
       </div>
 
+      {/* Error State */}
+      {errorMsg && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-3 text-rose-300 font-mono text-xs">
+          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       {/* When Evidence is Available */}
       {evidence && (
         <div className="space-y-6">
           {/* Top Alert Banner */}
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
+              <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400 shrink-0">
                 <AlertOctagon className="w-6 h-6" />
               </div>
               <div>
@@ -85,6 +108,7 @@ export default function ChameleonUnmasker({ merchants, onNavigateToSAR }) {
 
             <button
               onClick={() => onNavigateToSAR && onNavigateToSAR(selectedMerchant?.merchant_id)}
+              aria-label="View Auto-SAR Dossier"
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold shadow-md transition-all shrink-0"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -148,7 +172,7 @@ export default function ChameleonUnmasker({ merchants, onNavigateToSAR }) {
             </h4>
             <div className="space-y-3 font-mono text-xs">
               {evidence.audit_trail.map((step, idx) => (
-                <div key={idx} className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+                <div key={`${step.phase}-${idx}`} className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
                   <div className="flex items-center justify-between text-sky-400 font-semibold">
                     <span>{step.phase}</span>
                     <span className="text-[10px] text-slate-500 font-normal">{step.persona}</span>

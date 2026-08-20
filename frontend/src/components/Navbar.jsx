@@ -1,15 +1,13 @@
 import React from 'react';
-import { Activity, ShieldCheck, Radio, AlertTriangle, Play, Square, Eye, FileText, Cpu } from 'lucide-react';
+import { Activity, Radio, Play, Square, Eye, FileText, Cpu, Wifi, WifiOff } from 'lucide-react';
 
 export default function Navbar({ 
   activeTab, 
   setActiveTab, 
   isStreaming, 
   toggleStream, 
-  scenario, 
-  setScenario, 
   latencyMs, 
-  threatCount 
+  connectionStatus = 'connected' 
 }) {
   return (
     <header className="sticky top-0 z-50 border-b border-cyber-border bg-cyber-dark/95 backdrop-blur-md px-6 py-3.5">
@@ -18,7 +16,9 @@ export default function Navbar({
         <div className="flex items-center gap-3">
           <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-sky-500 to-indigo-600 shadow-lg shadow-sky-500/20">
             <Radio className="w-5 h-5 text-white animate-pulse" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-cyber-dark"></div>
+            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-cyber-dark ${
+              connectionStatus === 'connected' ? 'bg-emerald-400' : (connectionStatus === 'connecting' ? 'bg-amber-400 animate-ping' : 'bg-rose-500')
+            }`}></div>
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -31,7 +31,7 @@ export default function Navbar({
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1.5 bg-cyber-card/80 p-1 rounded-xl border border-cyber-border/80">
+        <nav className="flex items-center gap-1.5 bg-cyber-card/80 p-1 rounded-xl border border-cyber-border/80" aria-label="Main Navigation">
           <button
             onClick={() => setActiveTab('live')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -83,16 +83,32 @@ export default function Navbar({
 
         {/* Live Controls & Telemetry Stats */}
         <div className="flex items-center gap-3">
+          {/* WS Connection Pill */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyber-card border border-cyber-border text-xs font-mono">
+            {connectionStatus === 'connected' ? (
+              <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <WifiOff className="w-3.5 h-3.5 text-rose-400" />
+            )}
+            <span className="text-slate-400">WS:</span>
+            <span className={`font-semibold ${
+              connectionStatus === 'connected' ? 'text-emerald-400' : 'text-rose-400'
+            }`}>
+              {connectionStatus.toUpperCase()}
+            </span>
+          </div>
+
           {/* Latency Pill */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cyber-card border border-cyber-border text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            <span className="text-slate-400">ENGINE:</span>
-            <span className="text-emerald-400 font-semibold">{latencyMs || '0.12'} ms</span>
+            <span className="text-slate-400">FAST-PATH:</span>
+            <span className="text-emerald-400 font-semibold">{latencyMs || '0.09'} ms</span>
           </div>
 
           {/* Stream Toggle Button */}
           <button
             onClick={toggleStream}
+            aria-label={isStreaming ? 'Pause live stream' : 'Start live stream'}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all shadow-md ${
               isStreaming
                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
