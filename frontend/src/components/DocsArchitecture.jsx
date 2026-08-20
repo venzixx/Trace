@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function DocsArchitecture() {
-  const [activeDocTab, setActiveDocTab] = useState('diagrams'); // diagrams, script, tech, regulatory
+  const [activeDocTab, setActiveDocTab] = useState('diagrams'); // diagrams, script, tech
   const [scriptCopied, setScriptCopied] = useState(false);
 
   const videoScript = `🎬 TRACE: 5-MINUTE VIDEO PITCH SCRIPT & DEMO WALKTHROUGH
@@ -112,9 +112,22 @@ Trace is built with FastAPI, SQLite, React 18, and Docker — fully containerize
 Thank you for your time, and I look forward to building the future of AI risk at Razorpay!"`;
 
   const copyScriptToClipboard = () => {
-    navigator.clipboard.writeText(videoScript);
-    setScriptCopied(true);
-    setTimeout(() => setScriptCopied(false), 3000);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(videoScript);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = videoScript;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setScriptCopied(true);
+      setTimeout(() => setScriptCopied(false), 3000);
+    } catch (e) {
+      console.warn("Clipboard copy failed:", e);
+    }
   };
 
   return (
@@ -217,7 +230,7 @@ Thank you for your time, and I look forward to building the future of AI risk at
               <div className="p-5 rounded-2xl bg-slate-900/90 border border-purple-500/40 space-y-3 relative shadow-lg shadow-purple-500/10">
                 <div className="flex items-center justify-between">
                   <span className="w-7 h-7 rounded-xl bg-purple-500/20 text-purple-400 font-bold text-xs flex items-center justify-center">3</span>
-                  <Brain className="w-4 h-4 text-purple-400" />
+                  <Cpu className="w-4 h-4 text-purple-400" />
                 </div>
                 <h4 className="font-bold text-xs text-purple-300">Hybrid AI Evaluation</h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
@@ -244,7 +257,7 @@ Thank you for your time, and I look forward to building the future of AI risk at
               </div>
             </div>
 
-            {/* ASCII / Mermaid Architectural Diagram */}
+            {/* ASCII Dataflow Box */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-slate-400">Detailed Telemetry Dataflow:</span>
               <pre className="p-4 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 leading-relaxed overflow-x-auto">
