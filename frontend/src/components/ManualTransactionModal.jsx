@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, X, ShieldAlert, Cpu, AlertCircle, CheckCircle } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { api } from '../services/api';
 
 export default function ManualTransactionModal({ isOpen, onClose, merchants = [], onEvaluated }) {
@@ -23,8 +23,8 @@ export default function ManualTransactionModal({ isOpen, onClose, merchants = []
     setIsSubmitting(true);
     try {
       const selectedMerchant = merchants.find(m => m.merchant_id === merchantId) || {
-        merchant_id: merchantId,
-        merchant_name: "Selected Merchant",
+        merchant_id: merchantId || "mid_custom_test",
+        merchant_name: "Monitored Online Store",
         claimed_mcc: "5977 - Cosmetic Stores",
         registered_category: "Retail Cosmetics"
       };
@@ -62,161 +62,178 @@ export default function ManualTransactionModal({ isOpen, onClose, merchants = []
       };
 
       const verdict = await api.analyzeTransaction(payload);
+      const combined = {
+        type: "TRANSACTION_EVENT",
+        transaction: payload,
+        verdict: verdict
+      };
+
       setVerdictResult(verdict);
-      if (onEvaluated) onEvaluated({ transaction: payload, verdict });
+      if (onEvaluated) onEvaluated(combined);
     } catch (err) {
-      setErrorMsg(err.message || "Failed to analyze custom transaction");
+      setErrorMsg(err.message || "Failed to analyze transaction payload");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl custom-glass border border-cyber-border p-6 space-y-5 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+      <div className="w-full max-w-2xl rounded-3xl custom-glass border border-slate-800 p-6 space-y-5 relative shadow-2xl my-8">
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+          className="absolute right-4 top-4 p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
         >
-          <X className="w-5 h-5" />
+          <Icon icon="solar:close-circle-bold-duotone" className="w-5 h-5" />
         </button>
 
+        {/* Header */}
         <div className="border-b border-slate-800 pb-3">
-          <h3 className="text-base font-bold font-mono text-white flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-purple-400" /> CUSTOM WIRE TRANSACTION SANDBOX
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <Icon icon="solar:plain-bold-duotone" className="w-5 h-5 text-indigo-400" /> TEST CUSTOM WIRE PACKET &amp; CHECKOUT
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            Construct and inject custom Layer 4/7 wire telemetry and cart payloads directly into the live Risk Engine.
+            Simulate a live payment with custom network wire metrics (TCP RTT, JA4, SPLT entropy) and cart items.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 font-mono">
+            <Icon icon="solar:shield-warning-bold-duotone" className="w-4 h-4 text-rose-400 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        <form onSubmit={handleEvaluate} className="space-y-4 font-mono text-xs">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleEvaluate} className="space-y-4">
+          {/* Top Row: Merchant & Amount */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Target Merchant</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Target Online Store</label>
               <select
                 value={merchantId}
                 onChange={(e) => setMerchantId(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
               >
-                {merchants.map(m => (
-                  <option key={m.merchant_id} value={m.merchant_id}>
-                    {m.merchant_name} ({m.claimed_mcc})
-                  </option>
-                ))}
+                {merchants.length > 0 ? (
+                  merchants.map(m => (
+                    <option key={m.merchant_id} value={m.merchant_id}>
+                      {m.merchant_name} ({m.claimed_mcc?.split('-')[0]})
+                    </option>
+                  ))
+                ) : (
+                  <option value="mid_test_store">Default Test Store (MCC 5977)</option>
+                )}
               </select>
             </div>
+
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Transaction Amount (₹)</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Payment Amount (INR)</label>
               <input
                 type="number"
+                required
+                placeholder="25000"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
 
+          {/* Cart Item Name */}
           <div>
-            <label className="block text-slate-300 mb-1 font-semibold">Cart Item Name</label>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Cart Item Title (Semantic Audit)</label>
             <input
               type="text"
+              required
+              placeholder="e.g. Casino Chips VIP Pack 5000 or Neem Soap Bar"
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
-              placeholder="e.g. Casino Chips / Neem Soap / GPU Server"
-              className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          {/* Layer 4/7 Wire Metrics Box */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+            <span className="text-xs font-bold text-sky-400 font-mono flex items-center gap-1.5">
+              <Icon icon="solar:bolt-bold-duotone" className="w-3.5 h-3.5" /> Layer 4/7 Wire-Telemetry Simulation
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">TCP RTT (ms)</label>
+                <input
+                  type="number"
+                  value={rtt}
+                  onChange={(e) => setRtt(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Cisco SPLT Entropy</label>
+                <input
+                  type="number"
+                  step="0.05"
+                  value={entropy}
+                  onChange={(e) => setEntropy(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Client IP</label>
+                <input
+                  type="text"
+                  value={clientIp}
+                  onChange={(e) => setClientIp(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Client IP</label>
+              <label className="block text-[11px] text-slate-500 mb-1">JA4+ Client TLS Fingerprint</label>
               <input
                 type="text"
-                value={clientIp}
-                onChange={(e) => setClientIp(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-300 mb-1 font-semibold">TCP RTT (ms)</label>
-              <input
-                type="number"
-                value={rtt}
-                onChange={(e) => setRtt(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-300 mb-1 font-semibold">SPLT Entropy</label>
-              <input
-                type="number"
-                step="0.05"
-                value={entropy}
-                onChange={(e) => setEntropy(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+                value={ja4Hash}
+                onChange={(e) => setJa4Hash(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-slate-300 mb-1 font-semibold">JA4 TLS Fingerprint</label>
-            <input
-              type="text"
-              value={ja4Hash}
-              onChange={(e) => setJa4Hash(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
-            />
-          </div>
+          {/* Result Alert if Evaluated */}
+          {verdictResult && (
+            <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">AI Verdict:</span>
+                <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 font-mono">
+                  {verdictResult.action}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">{verdictResult.summary_text}</p>
+            </div>
+          )}
 
-          <div className="pt-2 flex justify-end gap-2">
+          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-800/80">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+              className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 text-xs font-semibold"
             >
-              Cancel
+              Close
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-500 text-white font-bold text-xs shadow-lg transition-all flex items-center gap-2"
             >
-              <Send className="w-3.5 h-3.5" />
-              {isSubmitting ? 'EVALUATING IN REAL-TIME...' : 'INJECT & EVALUATE'}
+              <Icon icon="solar:plain-bold-duotone" className="w-3.5 h-3.5" />
+              {isSubmitting ? 'Evaluating AI...' : 'Send Wire Test & Evaluate'}
             </button>
           </div>
         </form>
-
-        {/* Live Evaluation Result */}
-        {verdictResult && (
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="font-bold text-white">DECISION VERDICT:</span>
-              <span className={`px-2.5 py-1 rounded font-bold text-xs ${
-                verdictResult.action === 'ALLOW' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
-                (verdictResult.action === 'STEP_UP_3DS' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                (verdictResult.action === 'SETTLEMENT_HOLD' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'))
-              }`}>
-                {verdictResult.action} ({verdictResult.threat_category})
-              </span>
-            </div>
-
-            <p className="text-slate-300">{verdictResult.summary_text}</p>
-            <div className="flex items-center gap-4 text-[11px] text-slate-400">
-              <span>Overall: <strong className="text-white">{verdictResult.overall_risk_score}/100</strong></span>
-              <span>Wire: <strong className="text-sky-400">{verdictResult.wire_risk_score}/100</strong></span>
-              <span>Latency: <strong className="text-emerald-400">{verdictResult.processing_latency_ms} ms</strong></span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,28 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  BookOpen,
-  Layers,
-  Cpu,
-  ShieldCheck,
-  Zap,
-  Radio,
-  Network,
-  GitBranch,
-  Terminal,
-  Workflow,
-  ArrowRight,
-  Eye,
-  FileText,
-  Lock,
-  AlertTriangle,
-  CheckCircle2,
-  Activity,
-  BarChart3,
-  TrendingUp,
-  Server,
-  ShieldAlert
-} from 'lucide-react';
+import { Icon } from '@iconify/react';
 
 export default function DocsArchitecture() {
   const [activeDocTab, setActiveDocTab] = useState('pipeline'); // pipeline, l4l7, ml, mystery, regulatory
@@ -33,7 +11,7 @@ export default function DocsArchitecture() {
       <div className="p-6 md:p-8 rounded-3xl custom-glass border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-            <BookOpen className="w-6 h-6" />
+            <Icon icon="solar:book-bookmark-bold-duotone" className="w-6 h-6" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">
@@ -46,47 +24,47 @@ export default function DocsArchitecture() {
         <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-900 border border-slate-800 overflow-x-auto max-w-full scrollbar-none">
           <button
             onClick={() => setActiveDocTab('pipeline')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'pipeline' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
+            <Icon icon="solar:layers-bold-duotone" className="w-3.5 h-3.5" />
             <span>Overview</span>
           </button>
           <button
             onClick={() => setActiveDocTab('l4l7')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'l4l7' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Icon icon="solar:bolt-bold-duotone" className="w-3.5 h-3.5" />
             <span>Wire Telemetry</span>
           </button>
           <button
             onClick={() => setActiveDocTab('ml')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'ml' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Cpu className="w-3.5 h-3.5" />
+            <Icon icon="solar:cpu-bolt-bold-duotone" className="w-3.5 h-3.5" />
             <span>ML Engine</span>
           </button>
           <button
             onClick={() => setActiveDocTab('mystery')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'mystery' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Icon icon="solar:shop-2-bold-duotone" className="w-3.5 h-3.5" />
             <span>Store Hunter</span>
           </button>
           <button
             onClick={() => setActiveDocTab('regulatory')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               activeDocTab === 'regulatory' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
+            <Icon icon="solar:document-text-bold-duotone" className="w-3.5 h-3.5" />
             <span>SAR Reports</span>
           </button>
         </div>
@@ -120,7 +98,7 @@ export default function DocsArchitecture() {
               <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 relative hover:border-slate-700 transition-all">
                 <div className="flex items-center justify-between">
                   <span className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 font-bold text-xs flex items-center justify-center font-mono">01</span>
-                  <Radio className="w-4 h-4 text-sky-400 animate-pulse" />
+                  <Icon icon="solar:radar-2-bold-duotone" className="w-4 h-4 text-sky-400 animate-pulse" />
                 </div>
                 <h4 className="font-bold text-xs text-white">Payment Ingress</h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -135,7 +113,7 @@ export default function DocsArchitecture() {
               <div className="p-5 rounded-2xl bg-slate-900/90 border border-indigo-500/40 space-y-3 relative shadow-lg shadow-indigo-500/10 hover:border-indigo-400 transition-all">
                 <div className="flex items-center justify-between">
                   <span className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 font-bold text-xs flex items-center justify-center font-mono">02</span>
-                  <Zap className="w-4 h-4 text-indigo-400" />
+                  <Icon icon="solar:bolt-bold-duotone" className="w-4 h-4 text-indigo-400" />
                 </div>
                 <h4 className="font-bold text-xs text-indigo-300">Fast-Path Wire Engine</h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -150,7 +128,7 @@ export default function DocsArchitecture() {
               <div className="p-5 rounded-2xl bg-slate-900/90 border border-purple-500/40 space-y-3 relative shadow-lg shadow-purple-500/10 hover:border-purple-400 transition-all">
                 <div className="flex items-center justify-between">
                   <span className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 font-bold text-xs flex items-center justify-center font-mono">03</span>
-                  <Cpu className="w-4 h-4 text-purple-400" />
+                  <Icon icon="solar:cpu-bolt-bold-duotone" className="w-4 h-4 text-purple-400" />
                 </div>
                 <h4 className="font-bold text-xs text-purple-300">Multi-Tier AI Matrix</h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -165,7 +143,7 @@ export default function DocsArchitecture() {
               <div className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/40 space-y-3 relative shadow-lg shadow-emerald-500/10 hover:border-emerald-400 transition-all">
                 <div className="flex items-center justify-between">
                   <span className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center font-mono">04</span>
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <Icon icon="solar:shield-check-bold-duotone" className="w-4 h-4 text-emerald-400" />
                 </div>
                 <h4 className="font-bold text-xs text-emerald-300">Adaptive Friction Matrix</h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -181,7 +159,7 @@ export default function DocsArchitecture() {
             <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-sky-400" /> Latency Benchmark: Trace vs Legacy Cloud WAF
+                  <Icon icon="solar:pulse-2-bold-duotone" className="w-4 h-4 text-sky-400" /> Latency Benchmark: Trace vs Legacy Cloud WAF
                 </span>
                 <span className="text-xs font-mono text-emerald-400">99.96% Faster Decision Time</span>
               </div>
@@ -294,7 +272,7 @@ export default function DocsArchitecture() {
               <div className="space-y-3 text-xs text-slate-300">
                 <h4 className="font-bold text-sm text-white">2. Mathematical Anomaly Scoring</h4>
                 <p className="leading-relaxed">
-                  The anomaly score is calculated based on the average path length \(h(x)\) required to isolate a sample \(x\) across all 100 trees:
+                  The anomaly score is calculated based on the average path length required to isolate a sample across all 100 trees:
                 </p>
                 <div className="p-3 rounded-2xl bg-slate-950 font-mono text-xs text-purple-300 border border-slate-800">
                   s(x, n) = 2^(- E(h(x)) / c(n))

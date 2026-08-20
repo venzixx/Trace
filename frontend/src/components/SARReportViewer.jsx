@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, FileText, CheckCircle2, AlertOctagon, Terminal, Globe, Lock, ArrowRight } from 'lucide-react';
+import { Icon } from '@iconify/react';
 
 export default function SARReportViewer({ markdownText, reportId }) {
   if (!markdownText) return null;
@@ -8,14 +8,8 @@ export default function SARReportViewer({ markdownText, reportId }) {
   const renderInline = (text) => {
     if (!text) return null;
 
-    // Split text by code blocks `...` and bold blocks **...**
-    const parts = [];
-    let remaining = text;
-    let key = 0;
-
-    // Simple regex parser for **bold** and `code`
     const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
-    const tokens = remaining.split(regex);
+    const tokens = text.split(regex);
 
     return tokens.map((token, idx) => {
       if (token.startsWith('**') && token.endsWith('**')) {
@@ -41,7 +35,6 @@ export default function SARReportViewer({ markdownText, reportId }) {
   // Parse lines into logical sections
   const lines = markdownText.split('\n');
   const renderedSections = [];
-  let currentSection = null;
 
   lines.forEach((rawLine, lineIdx) => {
     const line = rawLine.trim();
@@ -53,7 +46,7 @@ export default function SARReportViewer({ markdownText, reportId }) {
       renderedSections.push(
         <div key={lineIdx} className="border-b border-slate-800 pb-4 mb-4">
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 font-bold mb-1">
-            <FileText className="w-4 h-4" /> OFFICIAL REGULATORY FILING
+            <Icon icon="solar:document-text-bold-duotone" className="w-4 h-4" /> OFFICIAL REGULATORY FILING
           </div>
           <h2 className="text-lg md:text-xl font-bold text-white tracking-tight">
             {line.replace('# ', '')}
@@ -61,7 +54,7 @@ export default function SARReportViewer({ markdownText, reportId }) {
         </div>
       );
     } else if (line.startsWith('## ')) {
-      // Section Header (e.g. ## 1. SUBJECT ENTITY IDENTIFICATION)
+      // Section Header
       renderedSections.push(
         <div key={lineIdx} className="pt-4 pb-2 border-t border-slate-800/80 mt-4">
           <h3 className="text-sm font-bold text-indigo-300 flex items-center gap-2">
@@ -87,7 +80,7 @@ export default function SARReportViewer({ markdownText, reportId }) {
         <div key={lineIdx} className="my-3 border-b border-slate-800/50" />
       );
     } else {
-      // Normal Paragraph or Meta line
+      // Normal Paragraph
       renderedSections.push(
         <p key={lineIdx} className="text-xs text-slate-300 leading-relaxed py-1">
           {renderInline(line)}
@@ -109,7 +102,7 @@ export default function SARReportViewer({ markdownText, reportId }) {
           </span>
         </div>
         <span className="text-xs font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" /> 99.4% AI Cryptographically Verified
+          <Icon icon="solar:shield-check-bold-duotone" className="w-4 h-4 text-emerald-400" /> 99.4% AI Cryptographically Verified
         </span>
       </div>
 

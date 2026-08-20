@@ -1,35 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import {
-  ShieldAlert,
-  Zap,
-  Activity,
-  Radio,
-  Play,
-  Square,
-  Eye,
-  FileText,
-  Cpu,
-  Brain,
-  LogOut,
-  Plus,
-  Send,
-  Search,
-  PanelLeft,
-  Menu,
-  X,
-  Lock,
-  AlertTriangle,
-  CheckCircle2,
-  Sparkles,
-  ArrowRight,
-  CreditCard,
-  AlertOctagon,
-  RefreshCw,
-  PlusCircle,
-  Clock,
-  BookOpen
-} from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './components/LoginPage';
 import AddMerchantModal from './components/AddMerchantModal';
@@ -479,39 +450,39 @@ function TraceDashboard() {
       case 'ALLOW':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Safe (Approved)
+            <Icon icon="solar:check-circle-bold-duotone" className="w-3.5 h-3.5" /> Safe (Approved)
           </span>
         );
       case 'STEP_UP_3DS':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            <AlertTriangle className="w-3.5 h-3.5" /> Needs OTP Check
+            <Icon icon="solar:shield-warning-bold-duotone" className="w-3.5 h-3.5" /> Needs OTP Check
           </span>
         );
       case 'SETTLEMENT_HOLD':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-            <Lock className="w-3.5 h-3.5" /> Money on Hold
+            <Icon icon="solar:lock-password-bold-duotone" className="w-3.5 h-3.5" /> Money on Hold
           </span>
         );
       case 'BLOCK_QUARANTINE':
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-            <ShieldAlert className="w-3.5 h-3.5" /> Blocked (Scam)
+            <Icon icon="solar:shield-cross-bold-duotone" className="w-3.5 h-3.5" /> Blocked (Scam)
           </span>
         );
     }
   };
 
   const sidebarItems = [
-    { id: 'home', title: 'Home Overview', icon: Activity },
-    { id: 'live', title: 'Payment Feed', icon: CreditCard, badge: transactions.length > 0 ? `${transactions.length}` : null },
-    { id: 'mystery', title: 'Fake Store Checker', icon: Eye, badge: stats.activeQuarantines > 0 ? `${stats.activeQuarantines}` : null },
-    { id: 'simulator', title: 'Fraud Attack Test', icon: Cpu },
-    { id: 'ai', title: 'How AI Works', icon: Brain },
-    { id: 'sar', title: 'Official Reports', icon: FileText },
-    { id: 'docs', title: 'System Docs', icon: BookOpen },
+    { id: 'home', title: 'Home Overview', icon: 'solar:home-smile-bold-duotone' },
+    { id: 'live', title: 'Payment Feed', icon: 'solar:card-transfer-bold-duotone', badge: transactions.length > 0 ? `${transactions.length}` : null },
+    { id: 'mystery', title: 'Fake Store Checker', icon: 'solar:shop-2-bold-duotone', badge: stats.activeQuarantines > 0 ? `${stats.activeQuarantines}` : null },
+    { id: 'simulator', title: 'Fraud Attack Test', icon: 'solar:danger-triangle-bold-duotone' },
+    { id: 'ai', title: 'How AI Works', icon: 'solar:cpu-bolt-bold-duotone' },
+    { id: 'sar', title: 'Official Reports', icon: 'solar:document-text-bold-duotone' },
+    { id: 'docs', title: 'System Docs', icon: 'solar:book-bookmark-bold-duotone' },
   ];
 
   return (
@@ -549,7 +520,7 @@ function TraceDashboard() {
           <div className="p-5 flex items-center justify-between border-b border-slate-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                <Radio className="w-5 h-5 text-white animate-pulse" />
+                <Icon icon="solar:radar-2-bold-duotone" className="w-5 h-5 text-white animate-pulse" />
               </div>
               <div>
                 <h1 className="font-bold text-base tracking-tight text-white flex items-center gap-1.5">
@@ -562,14 +533,14 @@ function TraceDashboard() {
               onClick={() => setMobileMenuOpen(false)}
               className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
             >
-              <X className="w-5 h-5" />
+              <Icon icon="solar:close-circle-bold-duotone" className="w-5 h-5" />
             </button>
           </div>
 
           {/* Quick Search */}
           <div className="p-3">
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <Icon icon="solar:minimalistic-magnifer-bold-duotone" className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
                 type="text"
                 placeholder="Search transactions..."
@@ -583,7 +554,6 @@ function TraceDashboard() {
           {/* Navigation Links */}
           <nav className="p-3 space-y-1.5" aria-label="Sidebar Menu">
             {sidebarItems.map((item) => {
-              const Icon = item.icon;
               const isActive = activeTab === item.id;
 
               return (
@@ -600,7 +570,7 @@ function TraceDashboard() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`} />
+                    <Icon icon={item.icon} className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-400'}`} />
                     <span>{item.title}</span>
                   </div>
                   {item.badge && (
@@ -633,7 +603,7 @@ function TraceDashboard() {
               title="Sign Out"
               className="p-1.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-all"
             >
-              <LogOut className="w-4 h-4" />
+              <Icon icon="solar:logout-2-bold-duotone" className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -648,13 +618,13 @@ function TraceDashboard() {
               onClick={() => setMobileMenuOpen(true)}
               className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
             >
-              <Menu className="w-5 h-5" />
+              <Icon icon="solar:hamburger-menu-bold-duotone" className="w-5 h-5" />
             </button>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="hidden md:flex p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
             >
-              <PanelLeft className="w-5 h-5" />
+              <Icon icon="solar:sidebar-minimalistic-bold-duotone" className="w-5 h-5" />
             </button>
             <h2 className="text-base font-bold text-white hidden sm:block">
               {sidebarItems.find(i => i.id === activeTab)?.title || 'Overview'}
@@ -668,7 +638,7 @@ function TraceDashboard() {
               onClick={() => setIsAddMerchantOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-all"
             >
-              <Plus className="w-3.5 h-3.5 text-sky-400" />
+              <Icon icon="solar:add-circle-bold-duotone" className="w-3.5 h-3.5 text-sky-400" />
               <span className="hidden sm:inline">Add Online Store</span>
             </button>
 
@@ -677,7 +647,7 @@ function TraceDashboard() {
               onClick={() => setIsManualTxOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all"
             >
-              <Send className="w-3.5 h-3.5" />
+              <Icon icon="solar:plain-bold-duotone" className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Test Payment</span>
             </button>
 
@@ -692,12 +662,12 @@ function TraceDashboard() {
             >
               {isStreaming ? (
                 <>
-                  <Square className="w-3 h-3 fill-rose-300" />
+                  <Icon icon="solar:pause-bold" className="w-3 h-3 text-rose-300" />
                   <span className="hidden sm:inline">Pause Feed</span>
                 </>
               ) : (
                 <>
-                  <Play className="w-3 h-3 fill-slate-950" />
+                  <Icon icon="solar:play-bold" className="w-3 h-3 text-slate-950" />
                   <span className="hidden sm:inline">Start Feed</span>
                 </>
               )}
@@ -709,14 +679,14 @@ function TraceDashboard() {
         {apiError && (
           <div className="bg-rose-500/10 border-b border-rose-500/30 px-6 py-2.5 flex items-center justify-between text-xs text-rose-300 font-mono">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              <Icon icon="solar:shield-warning-bold-duotone" className="w-4 h-4 text-rose-400" />
               <span>{apiError}</span>
             </div>
             <button 
               onClick={loadMerchants} 
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200"
             >
-              <RefreshCw className="w-3 h-3" /> Retry
+              <Icon icon="solar:restart-bold-duotone" className="w-3 h-3" /> Retry
             </button>
           </div>
         )}
@@ -749,13 +719,13 @@ function TraceDashboard() {
                         onClick={() => setActiveTab('simulator')}
                         className="px-5 py-2.5 rounded-2xl bg-white text-indigo-700 font-bold text-xs hover:bg-white/90 transition-all shadow-lg flex items-center gap-2"
                       >
-                        <Cpu className="w-4 h-4" /> Launch Fake Attack Test
+                        <Icon icon="solar:danger-triangle-bold-duotone" className="w-4 h-4" /> Launch Fake Attack Test
                       </button>
                       <button
                         onClick={() => setIsManualTxOpen(true)}
                         className="px-5 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/30 text-white font-semibold text-xs transition-all backdrop-blur-md flex items-center gap-2"
                       >
-                        <Send className="w-4 h-4" /> Test Custom Payment
+                        <Icon icon="solar:plain-bold-duotone" className="w-4 h-4" /> Test Custom Payment
                       </button>
                     </div>
                   </div>
@@ -770,7 +740,7 @@ function TraceDashboard() {
                       <div className="absolute inset-0 rounded-full border-2 border-dashed border-white/30" />
                       <div className="absolute inset-3 rounded-full border-2 border-white/20" />
                       <div className="absolute inset-6 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center">
-                        <Radio className="w-10 h-10 text-white animate-pulse" />
+                        <Icon icon="solar:radar-2-bold-duotone" className="w-10 h-10 text-white animate-pulse" />
                       </div>
                     </motion.div>
                   </div>
@@ -784,7 +754,7 @@ function TraceDashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-semibold">Instant AI Speed</span>
                     <div className="p-2 rounded-2xl bg-sky-500/10 text-sky-400">
-                      <Zap className="w-5 h-5" />
+                      <Icon icon="solar:bolt-bold-duotone" className="w-5 h-5" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold font-mono text-white">
@@ -800,7 +770,7 @@ function TraceDashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-semibold">Fraud Money Stopped</span>
                     <div className="p-2 rounded-2xl bg-rose-500/10 text-rose-400">
-                      <ShieldAlert className="w-5 h-5" />
+                      <Icon icon="solar:shield-warning-bold-duotone" className="w-5 h-5" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold font-mono text-white">
@@ -816,7 +786,7 @@ function TraceDashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-semibold">Fake Stores Caught</span>
                     <div className="p-2 rounded-2xl bg-amber-500/10 text-amber-400">
-                      <Eye className="w-5 h-5" />
+                      <Icon icon="solar:eye-closed-bold-duotone" className="w-5 h-5" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold font-mono text-white">
@@ -832,7 +802,7 @@ function TraceDashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-slate-400 font-semibold">Payments Evaluated</span>
                     <div className="p-2 rounded-2xl bg-emerald-500/10 text-emerald-400">
-                      <CheckCircle2 className="w-5 h-5" />
+                      <Icon icon="solar:check-circle-bold-duotone" className="w-5 h-5" />
                     </div>
                   </div>
                   <p className="text-3xl font-bold font-mono text-white">
@@ -852,7 +822,7 @@ function TraceDashboard() {
                 <div className="lg:col-span-2 rounded-3xl custom-glass p-6 space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div className="flex items-center gap-2 font-semibold text-sm text-white">
-                      <Activity className="w-4 h-4 text-indigo-400" />
+                      <Icon icon="solar:pulse-2-bold-duotone" className="w-4 h-4 text-indigo-400" />
                       <span>Live Payment Ingress Stream</span>
                     </div>
                     {transactions.length > 0 && (
@@ -868,7 +838,7 @@ function TraceDashboard() {
                   {transactions.length === 0 ? (
                     <div className="p-10 text-center space-y-3">
                       <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-500">
-                        <CreditCard className="w-6 h-6" />
+                        <Icon icon="solar:card-2-bold-duotone" className="w-6 h-6" />
                       </div>
                       <p className="text-xs font-semibold text-slate-300">No payment data recorded yet</p>
                       <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
@@ -917,7 +887,7 @@ function TraceDashboard() {
                 {/* Right 1 Col: Quick Feature Launchpad */}
                 <div className="rounded-3xl custom-glass p-6 space-y-4">
                   <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" /> Fraud Testing Arena
+                    <Icon icon="solar:sparkles-bold-duotone" className="w-4 h-4 text-amber-400" /> Fraud Testing Arena
                   </h3>
                   <div className="space-y-2.5">
                     <button
@@ -929,7 +899,7 @@ function TraceDashboard() {
                     >
                       <div className="flex justify-between items-center text-xs font-bold text-rose-400">
                         <span>1. Simulate Cloaked Casino</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <Icon icon="solar:arrow-right-bold" className="w-3.5 h-3.5" />
                       </div>
                       <p className="text-[11px] text-slate-400 font-sans">
                         Tests offshore reverse-proxy detection &amp; instant block.
@@ -945,7 +915,7 @@ function TraceDashboard() {
                     >
                       <div className="flex justify-between items-center text-xs font-bold text-amber-400">
                         <span>2. Simulate Fast Bot Swarm</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <Icon icon="solar:arrow-right-bold" className="w-3.5 h-3.5" />
                       </div>
                       <p className="text-[11px] text-slate-400 font-sans">
                         Tests micro-card testing protection &amp; OTP challenges.
@@ -961,7 +931,7 @@ function TraceDashboard() {
                     >
                       <div className="flex justify-between items-center text-xs font-bold text-purple-400">
                         <span>3. Sleeper Store Sudden Drain</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <Icon icon="solar:arrow-right-bold" className="w-3.5 h-3.5" />
                       </div>
                       <p className="text-[11px] text-slate-400 font-sans">
                         Tests ₹3.5 Lakh ticket surge &amp; escrow holding.
@@ -989,7 +959,7 @@ function TraceDashboard() {
 
                   {transactions.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-                      <CreditCard className="w-10 h-10 text-slate-600" />
+                      <Icon icon="solar:card-2-bold-duotone" className="w-10 h-10 text-slate-600" />
                       <p className="text-xs text-slate-400">No payment stream active.</p>
                       <button
                         onClick={() => handleStartStream('MIXED')}
@@ -1096,7 +1066,7 @@ function TraceDashboard() {
                     </>
                   ) : (
                     <div className="p-16 text-center text-slate-500 space-y-2">
-                      <Zap className="w-8 h-8 mx-auto text-slate-600" />
+                      <Icon icon="solar:bolt-bold-duotone" className="w-8 h-8 mx-auto text-slate-600" />
                       <p className="text-xs">No payment selected.</p>
                       <p className="text-[11px] text-slate-600">Launch a test scenario to inspect live network packets.</p>
                     </div>
@@ -1112,7 +1082,7 @@ function TraceDashboard() {
               <div className="p-6 rounded-3xl custom-glass flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-amber-400" /> Autonomous Fake Store Auditor
+                    <Icon icon="solar:shop-2-bold-duotone" className="w-5 h-5 text-amber-400" /> Autonomous Fake Store Auditor
                   </h2>
                   <p className="text-xs text-slate-400 mt-1 max-w-2xl">
                     Our AI simulates real mobile and secret referral checkouts to discover if a merchant is secretly selling prohibited goods (like illegal casino chips or fake products).
@@ -1151,7 +1121,7 @@ function TraceDashboard() {
                       onClick={() => setIsAddMerchantOpen(true)}
                       className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5"
                     >
-                      <Plus className="w-4 h-4" /> Add Online Store
+                      <Icon icon="solar:add-circle-bold-duotone" className="w-4 h-4" /> Add Online Store
                     </button>
                   )}
                 </div>
@@ -1160,7 +1130,7 @@ function TraceDashboard() {
               {merchants.length === 0 ? (
                 <div className="p-16 rounded-3xl custom-glass text-center space-y-3">
                   <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-amber-400">
-                    <Eye className="w-6 h-6" />
+                    <Icon icon="solar:eye-closed-bold-duotone" className="w-6 h-6" />
                   </div>
                   <h3 className="text-sm font-bold text-white">No Monitored Stores in Database</h3>
                   <p className="text-xs text-slate-400 max-w-md mx-auto">
@@ -1172,7 +1142,7 @@ function TraceDashboard() {
                   {/* Alert Box */}
                   <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <AlertOctagon className="w-6 h-6 text-rose-400 shrink-0" />
+                      <Icon icon="solar:danger-triangle-bold-duotone" className="w-6 h-6 text-rose-400 shrink-0" />
                       <div>
                         <h4 className="text-xs font-bold text-rose-300">SCAM CONFIRMED: Secret Online Casino Found</h4>
                         <p className="text-xs text-slate-300 mt-0.5">{auditEvidence.diff_summary}</p>
@@ -1227,7 +1197,7 @@ function TraceDashboard() {
             <div className="space-y-6">
               <div className="p-6 rounded-3xl custom-glass space-y-2">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Cpu className="w-5 h-5 text-purple-400" /> Fraud Attack Testing Arena
+                  <Icon icon="solar:danger-triangle-bold-duotone" className="w-5 h-5 text-purple-400" /> Fraud Attack Testing Arena
                 </h2>
                 <p className="text-xs text-slate-400 max-w-3xl">
                   Pick a test scenario below to launch realistic attacks against the Trace AI engine. Watch how it responds in under 1 millisecond without slowing down real buyers.
@@ -1307,7 +1277,7 @@ function TraceDashboard() {
             <div className="space-y-6">
               <div className="p-6 rounded-3xl custom-glass space-y-2">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-indigo-400" /> How the Trace AI Works (Simple Explanation)
+                  <Icon icon="solar:cpu-bolt-bold-duotone" className="w-5 h-5 text-indigo-400" /> How the Trace AI Works (Simple Explanation)
                 </h2>
                 <p className="text-xs text-slate-400 max-w-3xl">
                   Trace uses 4 layers of smart technology working together to keep payments safe without slowing down good customers.
@@ -1356,7 +1326,7 @@ function TraceDashboard() {
               <div className="p-6 rounded-3xl custom-glass flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-emerald-400" /> Official Bank &amp; Police Reports (SAR)
+                    <Icon icon="solar:document-text-bold-duotone" className="w-5 h-5 text-emerald-400" /> Official Bank &amp; Police Reports (SAR)
                   </h2>
                   <p className="text-xs text-slate-400 mt-1 max-w-2xl">
                     1-Click formal legal documentation formatted according to RBI and Financial Intelligence Unit standards.
@@ -1397,7 +1367,7 @@ function TraceDashboard() {
                 <SARReportViewer markdownText={sarReport.report_markdown} reportId={sarReport.report_id} />
               ) : (
                 <div className="p-16 rounded-3xl custom-glass text-center space-y-3">
-                  <FileText className="w-10 h-10 text-slate-600 mx-auto" />
+                  <Icon icon="solar:document-text-bold-duotone" className="w-10 h-10 text-slate-600 mx-auto" />
                   <p className="text-xs text-slate-400">No report generated yet.</p>
                   <p className="text-[11px] text-slate-500">
                     Run an audit or launch a test attack to generate an official filing.
